@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>MyPhotoBook_ROAD 사용 가이드</title>
+<!-- 사용 가이드 이미지 원본. python3 scripts/guide.py 로 docs/MyPhotoBook_ROAD_사용가이드.png 를 만들어요 -->
+<style>
+@font-face { font-family: "IBM Plex Sans KR"; font-weight: 400; src: url("../engine/web/fonts/IBMPlexSansKR-Regular.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans KR"; font-weight: 500; src: url("../engine/web/fonts/IBMPlexSansKR-Medium.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans KR"; font-weight: 600; src: url("../engine/web/fonts/IBMPlexSansKR-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 300 700; src: url("../engine/web/fonts/SpaceGrotesk-Variable.woff2") format("woff2"); }
+:root { --bg: #EEF1F5; --panel: #FFFFFF; --chip: #E2E7EE; --line: #D3DAE3; --ink: #0F1720; --muted: #556170;
+  --accent: #2D5BFF; --accent-soft: #E3E9FF; --accent-text: #2448D8; --hot: #FF8A55; --hot-soft: #FFE8DC; --hot-text: #A8410F; --green: #1F6B52; }
+* { box-sizing: border-box; }
+body { margin: 0; width: 1200px; background: var(--bg); color: var(--ink); font: 15px/1.6 "IBM Plex Sans KR", sans-serif; -webkit-font-smoothing: antialiased; }
+.num, h1 b { font-family: "Space Grotesk", sans-serif; }
+.hero { display: flex; gap: 28px; align-items: center; padding: 40px 44px 28px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.hero img { width: 120px; height: 120px; }
+.hero h1 { margin: 0; display: flex; align-items: baseline; gap: 14px; font-size: 24px; font-weight: 600; color: var(--muted); }
+.hero h1 b { font-size: 44px; font-weight: 700; color: var(--ink); letter-spacing: -1px; }
+.hero h1 b span { color: var(--muted); font-weight: 500; }
+.hero p { margin: 8px 0 14px; font-size: 18px; font-weight: 600; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { padding: 4px 12px; border-radius: 999px; background: var(--chip); font-size: 13px; font-weight: 500; }
+.wrap { padding: 4px 32px 28px; }
+h2 { margin: 26px 4px 12px; font-size: 21px; font-weight: 600; display: flex; align-items: baseline; gap: 12px; letter-spacing: -.3px; }
+h2 small { font-size: 14px; font-weight: 400; color: var(--muted); }
+.row { display: grid; gap: 14px; }
+.c4 { grid-template-columns: repeat(4, 1fr); }
+.c3 { grid-template-columns: repeat(3, 1fr); }
+.c2 { grid-template-columns: 1fr 1fr; }
+.c55 { grid-template-columns: 1.25fr 1fr; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.n { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 22px; color: var(--accent-text); }
+.step h3 { margin: 4px 0 6px; font-size: 16px; font-weight: 600; }
+.step p { margin: 0; color: var(--muted); font-size: 13.5px; }
+.step p strong, .card strong { color: var(--ink); font-weight: 600; }
+.shot { padding: 10px; }
+.shot img { width: 100%; display: block; border-radius: 8px; border: 1px solid var(--line); }
+.card h4 { margin: 0 0 10px; font-size: 16.5px; font-weight: 600; }
+.kv { display: grid; grid-template-columns: 100px 1fr; gap: 10px; padding: 7px 0; font-size: 14px; border-top: 1px solid var(--line); }
+.kv:first-of-type { border-top: 0; }
+.kv b { color: var(--muted); font-weight: 600; }
+.tree { padding: 12px 16px; border-radius: 8px; background: var(--bg); font-family: "Space Grotesk", "IBM Plex Sans KR", sans-serif; font-size: 13.5px; line-height: 1.75; }
+.live { color: var(--hot-text); font-weight: 600; }
+.badge { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--hot); color: #2A0E00; font: 700 10.5px "Space Grotesk"; letter-spacing: .5px; vertical-align: 1px; }
+.stop { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.stop:first-of-type { border-top: 0; }
+.ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--hot-soft); color: var(--hot-text); }
+.ico.ok { background: var(--accent-soft); color: var(--accent-text); }
+.ico svg { width: 20px; height: 20px; }
+.stop span { color: var(--muted); }
+.tips { display: flex; flex-direction: column; }
+.tip { display: grid; grid-template-columns: 26px 1fr; gap: 8px; padding: 8px 0; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); }
+.tip:first-child { border-top: 0; }
+.tip i { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); margin: 8px 0 0 6px; }
+.tip i.h { background: var(--hot); }
+.callout { margin-top: 14px; padding: 14px 18px; border-radius: 12px; background: var(--accent-soft); font-size: 14px; display: flex; gap: 12px; align-items: flex-start; }
+.callout svg { width: 20px; height: 20px; flex: 0 0 20px; color: var(--accent-text); margin-top: 2px; }
+.callout b { color: var(--accent-text); }
+.foot { text-align: center; margin-top: 22px; font: 600 14px "Space Grotesk"; letter-spacing: .04em; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="hero">
+  <img src="../app/AppIcon.png" alt="">
+  <div>
+    <h1><b>MyPhotoBook<span>_ROAD</span></b> 사용 가이드</h1>
+    <p>iPhone 사진 · 동영상을 케이블로 맥에 옮기고, 연 / 월 / 일 폴더로 정리해요</p>
+    <div class="pills">
+      <span class="pill">Apple Silicon 맥 전용</span><span class="pill">케이블 연결</span><span class="pill">사진 · 동영상 · Live Photo</span>
+      <span class="pill">이미 옮긴 사진은 건너뛰기</span><span class="pill">확인 뒤에만 iPhone에서 지우기</span>
+      <span class="pill">멈춰도 이어서</span><span class="pill">개수 제한 없음</span><span class="pill">자동 업데이트</span><span class="pill">라이트 · 다크</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h2>처음 한 번만 <small>몇 분이면 끝나요</small></h2>
+  <div class="row c4">
+    <div class="card step"><span class="n">01</span><h3>압축 풀고 옮기기</h3><p><strong>MyPhotoBook_ROAD.zip</strong>을 풀고 앱을 <strong>응용 프로그램</strong> 폴더로 옮겨요. 그래야 자동 업데이트가 돼요.</p></div>
+    <div class="card step"><span class="n">02</span><h3>보안 허용</h3><p>처음 열 때 경고가 뜨면 <strong>시스템 설정 › 개인정보 보호 및 보안</strong> 맨 아래 <strong>‘그래도 열기’</strong>를 눌러요.</p></div>
+    <div class="card step"><span class="n">03</span><h3>iPhone 연결</h3><p>케이블로 연결하고 <strong>잠금을 풀어요.</strong> iPhone에 <strong>‘이 컴퓨터를 신뢰하겠습니까?’</strong>가 뜨면 <strong>신뢰</strong>.</p></div>
+    <div class="card step"><span class="n">04</span><h3>허용 묻는 창</h3><p>맥이 iPhone 사진에 다가가도 되는지 물으면 <strong>허용</strong>을 눌러요. 그다음부터는 연결만 하면 바로 목록이 떠요.</p></div>
+  </div>
+
+  <h2>옮기는 법 <small>고르고 · 가져오고 · 확인되면 지우기</small></h2>
+  <div class="row c55">
+    <div class="card shot"><img src="shots/main.png" alt=""></div>
+    <div class="card">
+      <div class="kv"><b>고르기</b><span>사진을 누르면 골라져요. <strong>Shift</strong>를 누른 채 누르면 사이를 한꺼번에, 날짜 옆 <strong>‘이 날 모두’</strong>로 하루치를 골라요. ⌘A는 보이는 것 모두.</span></div>
+      <div class="kv"><b>가져오기</b><span>아래 막대의 <strong>가져오기</strong>. 아무것도 안 고르면 <strong>새 항목 모두 가져오기</strong>예요. 한 번에 옮기는 개수에 제한이 없어요.</span></div>
+      <div class="kv"><b>확인</b><span>복사한 뒤 <strong>크기와 내용을 원본과 하나씩 비교</strong>해요. 확인이 끝난 것만 정리 폴더에 들어가요.</span></div>
+      <div class="kv"><b>지우기</b><span><strong>‘확인 후 iPhone에서 지우기’</strong>가 켜져 있으면 다 옮긴 뒤 한 번 더 물어봐요. 사진을 골라 <strong>선택 항목 지우기</strong>도 돼요 — 맥에 없는 사진은 <strong>먼저 옮긴 뒤 지우기</strong>가 기본이에요.</span></div>
+      <div class="kv"><b>걸러 보기</b><span><strong>새 항목 · 이미 옮김 · 전체</strong>, 사진 · 동영상 · Live Photo. 오른쪽 <strong>연 · 월</strong>을 누르면 그 달로 가요.</span></div>
+      <div class="kv"><b>미리보기</b><span>위쪽 <strong>미리보기 켬/끔</strong>. 끄면 그림 없이 목록으로 보여 줘서 훨씬 빨라요.</span></div>
+    </div>
+  </div>
+
+  <div class="row c3" style="margin-top:14px">
+    <div class="card">
+      <h4>폴더 정리 · 연 / 월 / 일</h4>
+      <div class="tree">
+        <div style="font-weight:600">사진 › MyPhotoBook</div><div style="padding-left:16px">└ 2026</div><div style="padding-left:32px">└ 10</div><div style="padding-left:48px">└ 27</div>
+        <div style="padding-left:70px">IMG_4821.HEIC <span class="live">LIVE</span></div><div style="padding-left:70px">IMG_4821.MOV <span class="live">LIVE 짝</span></div><div style="padding-left:70px">IMG_4822.MOV</div>
+      </div>
+      <p style="margin:10px 0 0;font-size:13.5px;color:var(--muted)">사진 · 동영상 모두 <strong>찍은 날짜</strong>로 나눠요. <span class="badge">LIVE</span> 사진과 영상은 같은 이름으로 나란히. 같은 이름의 다른 파일이 있으면 <strong>_1</strong>을 붙여요. 저장 위치는 <strong>설정</strong>이나 아래 막대 <strong>폴더 변경</strong>에서 바꿔요(외장 디스크도 돼요).</p>
+    </div>
+    <div class="card">
+      <h4>중간에 멈춰도 괜찮아요</h4>
+      <div class="stop"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg></span><div><strong>iPhone이 잠기면</strong><br><span>잠시 멈췄다가 잠금을 풀면 멈춘 곳부터 알아서 이어서 해요.</span></div></div>
+      <div class="stop"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0z M12 16v5"/></svg></span><div><strong>케이블이 빠지면</strong><br><span>다시 연결하면 받다 만 파일도 받은 데까지 이어 받아요.</span></div></div>
+      <div class="stop"><span class="ico ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></svg></span><div><strong>앱이 꺼지면</strong><br><span>다음에 열 때 ‘지난번 가져오기가 끝나지 않았어요’ → <strong>이어서 하기</strong>.</span></div></div>
+    </div>
+    <div class="card">
+      <h4>그 밖에</h4>
+      <div class="kv"><b>화면 모드</b><span>설정 › 화면: 맥 설정 따름(기본) · 라이트 · 다크</span></div>
+      <div class="kv"><b>업데이트</b><span>새 버전이 나오면 앱이 알아서 받아요. 위쪽에 <strong>‘새 버전 준비됨’</strong>이 보이면 눌러서 다시 시작</span></div>
+      <div class="kv"><b>창 닫기</b><span>창을 닫아도 Dock에 남아요. 완전히 끄려면 <strong>⌘Q</strong></span></div>
+      <div class="kv"><b>문제가 생기면</b><span>설정 › <strong>진단 정보 보기</strong> 내용을 보내 주세요</span></div>
+    </div>
+  </div>
+
+  <div class="callout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0"/></svg>
+    <div><b>많이 옮길 때 팁 · 자동 잠금 끄기</b> — iPhone이 잠기면 전송이 멈춰요(iPhone 보안 규칙이라 앱이 막을 수 없어요). 옮기는 동안 iPhone <strong>설정 › 디스플레이 및 밝기 › 자동 잠금</strong>을 <strong>‘안 함’</strong>으로 두면 끝까지 쉬지 않고 옮겨요. 다 옮긴 뒤에는 원래대로 돌려 두세요.</div></div>
+
+  <h2 style="margin-top:22px">알아두면 좋은 점</h2>
+  <div class="row c2">
+    <div class="card tips">
+      <div class="tip"><i></i><div><strong>지우기를 누르기 전에는 iPhone 사진을 건드리지 않아요.</strong> 맥에 복사하고 확인이 끝난 것만 지울 수 있어요.</div></div>
+      <div class="tip"><i class="h"></i><div><strong>지운 사진은 iPhone ‘최근 삭제된 항목’에 남을 수 있어요.</strong> 공간이 바로 늘지 않으면 사진 앱 › 앨범 › 최근 삭제된 항목을 비워 주세요.</div></div>
+      <div class="tip"><i class="h"></i><div><strong>iCloud 사진의 ‘iPhone 저장 공간 최적화’를 쓰면</strong> 원본이 iCloud에만 있는 사진은 케이블로 옮겨지지 않을 수 있어요.</div></div>
+    </div>
+    <div class="card tips">
+      <div class="tip"><i></i><div><strong>옮기는 동안 맥은 잠자기에 들어가지 않아요</strong> (화면은 꺼져도 괜찮아요). 케이블만 빼지 마세요.</div></div>
+      <div class="tip"><i></i><div><strong>이미 옮긴 사진은 다시 옮기지 않아요.</strong> 가져온 기록과 정리 폴더의 파일을 보고 알아봐요.</div></div>
+      <div class="tip"><i></i><div><strong>깔끔하게 지우려면</strong> 앱을 휴지통에 버리고 ~/Library/Application Support/MyPhotoBook_ROAD 폴더도 지워요. 옮긴 사진은 그대로 남아요.</div></div>
+    </div>
+  </div>
+  <div class="foot">made by. Nevertheless_D</div>
+</div>
+</body>
+</html>

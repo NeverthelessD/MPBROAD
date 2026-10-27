@@ -70,10 +70,6 @@ final class Helper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
         if let mask = ICDeviceTypeMask(rawValue: raw) as ICDeviceTypeMask? {
             browser.browsedDeviceTypeMask = mask
         }
-        if #available(macOS 10.15, *) {
-            browser.requestContentsAuthorization { status in say("사진 읽기 허용 상태: \(status.rawValue)") }
-            browser.requestControlAuthorization { status in say("기기 제어 허용 상태: \(status.rawValue)") }
-        }
         browser.start()
         say("iPhone 찾기 시작")
         status(force: true)
