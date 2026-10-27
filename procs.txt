@@ -1,0 +1,5 @@
+--- A 실행 중
+ 3139     1 S    /Applications/MyPhotoBook_ROAD.app/Contents/MacOS/MyPhotoBook_ROAD
+ 3149  3139 S    /Users/runner/Library/Application Support/MyPhotoBook_ROAD/bin/mpbroad-engine
+ 3151  3149 S    /Users/runner/Library/Application Support/MyPhotoBook_ROAD/bin/mpbroad-engine
+ 3152  3151 S    /Users/runner/Library/Application Support/MyPhotoBook_ROAD/bin/mpbroad-device

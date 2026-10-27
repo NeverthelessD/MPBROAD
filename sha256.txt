@@ -1,0 +1,2 @@
+8de4234db587fba9c02ab6322dcb5fe7f3c444c3f34de15408722e3f61e4071a  /Users/runner/work/MPBROAD/MPBROAD/ci-out/MPBROAD-1.1.0.zip
+599e228963cc7517f23a0bef48334ba7981f43f97ee83129f27b027f53ce025c  /Users/runner/work/MPBROAD/MPBROAD/ci-out/MyPhotoBook_ROAD-first-install.zip

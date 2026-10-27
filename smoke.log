@@ -1,0 +1,65 @@
+▶ 준비: 앱 설치
+▶ A. 켜기 · 화면 · 진짜 iPhone 도우미
+PASS  A1 앱을 열면 엔진이 준비됨
+PASS  A2 엔진이 Dock 앱 방식으로 켜짐(shell=native)
+PASS  A3 주소가 47931
+PASS  A4 iPhone 도우미(ImageCaptureCore)가 켜져 기다림 (ok/none)
+PASS  A5 화면이 앱 창(WKWebView)에서 열림
+PASS  A6 앱 3139 → 지킴이 3149 → 엔진 3151 → iPhone 도우미 3152
+▶ B. Dock 아이콘 다시 누르기(reopen)
+PASS  B1 다시 열기 뒤에도 앱·엔진 그대로
+▶ C. 엔진 · 도우미가 고장으로 꺼지면 다시 켬
+PASS  C1 iPhone 도우미 다시 켜짐
+PASS  C2 엔진 다시 켜짐
+PASS  C3 앱은 그대로
+PASS  C4 종료(⌘Q) → 앱 · 엔진 · 도우미 모두 꺼짐
+▶ I. 가져오기 (가짜 iPhone): 연/월/일 정리 · 갑자기 꺼짐 → 이어서 하기 · 지우기
+✔ 가짜 iPhone: /Users/runner/MPB-test-iphone (46개 파일)
+PASS  I1 가짜 iPhone 사진 30개 묶음 (읽은 수 30)
+PASS  I1b 길게 눌러 미리보기: 옮기기 전 사진 원본 (9578B)
+PASS  I1c 길게 눌러 미리보기: Live 영상 받아 둠
+PASS  I2 가져오는 중
+PASS  I3 앱이 강제로 꺼지면 엔진 · 도우미도 꺼짐
+PASS  I4 다시 열면 '지난번 가져오기가 끝나지 않았어요' (interrupted/14/38)
+PASS  I5 이어서 끝까지
+PASS  I6 30개 모두 옮김 · 실패 0 · Live 짝 8 (30/0/8)
+PASS  I7 연/월/일 폴더 (2026/10/27 에 11개, AAE 없음)
+PASS  I8 임시 폴더 정리됨
+PASS  I9 확인된 것만 iPhone에서 지움 (남은 파일 0)
+▶ E. 화면의 '종료' 버튼(= /api/quit) → 앱도 꺼짐
+PASS  E1 앱·엔진·도우미 모두 꺼짐
+▶ G. 업데이트 뒤 다시 열기 (/api/update/restart)
+PASS  G1 새로 열린 앱이 엔진을 켬
+PASS  G2 앱이 새로 열림 (4310 → 4367)
+PASS  G3 앱 하나만 떠 있음
+PASS  G4 끝나면 모두 꺼짐
+▶ 기록 모으기
+
+== 결과 ==
+PASS  A1 앱을 열면 엔진이 준비됨
+PASS  A2 엔진이 Dock 앱 방식으로 켜짐(shell=native)
+PASS  A3 주소가 47931
+PASS  A4 iPhone 도우미(ImageCaptureCore)가 켜져 기다림 (ok/none)
+PASS  A5 화면이 앱 창(WKWebView)에서 열림
+PASS  A6 앱 3139 → 지킴이 3149 → 엔진 3151 → iPhone 도우미 3152
+PASS  B1 다시 열기 뒤에도 앱·엔진 그대로
+PASS  C1 iPhone 도우미 다시 켜짐
+PASS  C2 엔진 다시 켜짐
+PASS  C3 앱은 그대로
+PASS  C4 종료(⌘Q) → 앱 · 엔진 · 도우미 모두 꺼짐
+PASS  I1 가짜 iPhone 사진 30개 묶음 (읽은 수 30)
+PASS  I1b 길게 눌러 미리보기: 옮기기 전 사진 원본 (9578B)
+PASS  I1c 길게 눌러 미리보기: Live 영상 받아 둠
+PASS  I2 가져오는 중
+PASS  I3 앱이 강제로 꺼지면 엔진 · 도우미도 꺼짐
+PASS  I4 다시 열면 '지난번 가져오기가 끝나지 않았어요' (interrupted/14/38)
+PASS  I5 이어서 끝까지
+PASS  I6 30개 모두 옮김 · 실패 0 · Live 짝 8 (30/0/8)
+PASS  I7 연/월/일 폴더 (2026/10/27 에 11개, AAE 없음)
+PASS  I8 임시 폴더 정리됨
+PASS  I9 확인된 것만 iPhone에서 지움 (남은 파일 0)
+PASS  E1 앱·엔진·도우미 모두 꺼짐
+PASS  G1 새로 열린 앱이 엔진을 켬
+PASS  G2 앱이 새로 열림 (4310 → 4367)
+PASS  G3 앱 하나만 떠 있음
+PASS  G4 끝나면 모두 꺼짐
