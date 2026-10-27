@@ -1,1 +1,31 @@
-<!doctype html><title>x</title>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyPhotoBook_ROAD</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22.5" fill="#1F6B52"/><rect x="0" y="0" width="14" height="100" fill="#000" opacity=".16"/><g transform="rotate(-13 57 50)"><rect x="33" y="22" width="48" height="56" rx="2" fill="#fff"/><rect x="37" y="26" width="40" height="38" fill="#F3C9A8"/></g><g transform="rotate(9 57 50)"><rect x="33" y="22" width="48" height="56" rx="2" fill="#fff"/><rect x="37" y="26" width="40" height="38" fill="#9DB8C9"/></g><rect x="33" y="20" width="48" height="56" rx="2" fill="#fff"/><rect x="37" y="24" width="40" height="40" fill="#CFE3D7"/><circle cx="68" cy="34" r="5" fill="#F2B23A"/><path d="M37 55 Q57 43 77 54 L77 64 L37 64Z" fill="#1F6B52"/></svg>
+      <b>MyPhotoBook<span>_ROAD</span></b>
+    </div>
+    <div class="devchip" id="devchip"><i class="dot off"></i><span>연결된 iPhone 없음</span></div>
+    <div class="spacer"></div>
+    <button class="updpill hidden" id="updpill" type="button"></button>
+    <button class="tbtn on" id="previewBtn" type="button" role="switch" aria-checked="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>
+      <span>미리보기 켬</span>
+    </button>
+    <button class="ibtn" id="settingsBtn" type="button" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+  </header>
+  <main id="main" style="flex:1;min-height:0;display:flex;flex-direction:column;position:relative"></main>
+</div>
+<div id="layer"></div>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -256,6 +256,7 @@ func (j *Jobs) State() map[string]any {
 	out["destPath"] = j.spec.Dest
 	out["stopAt"] = j.stopAt
 	out["autoDelete"] = len(j.spec.AutoDelete)
+	out["askDelete"] = j.spec.AskDelete
 	if j.cur != nil {
 		out["cur"] = map[string]any{"name": j.cur.Name, "kind": j.cur.Kind, "dir": filepath.ToSlash(dateDir(j.cur.Created)), "id": j.cur.ID,
 			"done": j.curDone, "size": j.cur.Size}
