@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "date": "2026-10-27",
+  "zip": "MPBROAD-1.0.0.zip",
+  "sha256": "5fea13595e2b7aa6a0ce74e409db31d03cfbd2e49d1fd690b95a3ed80a9d38bf",
+  "size": 5139202,
+  "notes": [
+    "첫 버전: iPhone 사진 · 동영상을 케이블로 맥에 옮기고 연 / 월 / 일로 정리",
+    "이미 옮긴 사진 건너뛰기 · Live Photo 묶음 · 복사 확인 뒤에만 iPhone에서 지우기",
+    "iPhone 잠김 · 케이블 빠짐 · 앱 꺼짐에도 멈춘 곳부터 이어서 하기"
+  ]
+}

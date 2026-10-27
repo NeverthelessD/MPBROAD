@@ -15,15 +15,24 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 
 - [x] 0. 디자인 시안 → 사용자 확정 (2026-10-27, Design 캔버스 'MyPhotoBook_ROAD 디자인 시안', 방향 B 라이트박스)
 - [x] 1. 저장소 뼈대 (이 파일, CLAUDE.md, VERSION, .gitignore, 글꼴)
-- [ ] 2. 엔진 기본: 서버 · 토큰 · 지킴이 · 업데이트 · 진단 (MSROAD 1.3 방식)
-- [ ] 3. iPhone 연결 도우미(Swift, ImageCaptureCore) + 가짜 기기(MPB_FAKE_DEVICE)
-- [ ] 4. 가져오기: 복사 → 확인 → 정리, 중복 건너뛰기, Live Photo 묶음, 이어서 하기, 잠김 멈춤, 지우기
-- [ ] 5. 화면 (시안 B 그대로)
-- [ ] 6. 맥 앱 껍데기 · 아이콘 · build-mac.sh · smoke-mac.sh · ci-mac.sh · 워크플로
-- [ ] 7. 리눅스 Playwright 시험 (가짜 iPhone)
-- [ ] 8. 맥 빌드 서버 통과 · 사용 가이드 이미지 · 설치 zip · v1.0.0 릴리스
+- [x] 2. 엔진 기본: 서버 · 토큰 · 지킴이 · 업데이트 · 진단 (MSROAD 1.3 방식)
+- [x] 3. iPhone 연결 도우미(Swift, ImageCaptureCore) + 가짜 기기(MPB_FAKE_DEVICE)
+- [x] 4. 가져오기: 복사 → 확인 → 정리, 중복 건너뛰기, Live Photo 묶음, 이어서 하기, 잠김 멈춤, 지우기
+- [x] 5. 화면 (시안 B 그대로)
+- [x] 6. 맥 앱 껍데기 · 아이콘 · build-mac.sh · smoke-mac.sh · ci-mac.sh · 워크플로
+- [x] 7. 리눅스 Playwright 시험 (가짜 iPhone)
+- [x] 8. 맥 빌드 서버 통과 · 사용 가이드 이미지 · 설치 zip · v1.0.0 릴리스
+
+### 다음에 할 수 있는 일
+- [ ] 사용자 맥 + 실제 iPhone 으로 확인: 목록 · 썸네일 화질 · Live Photo 묶음(groupUUID/이름) · 동영상 길이 · 잠김 감지 ·
+      지우기(requestDeleteFiles) · 큰 동영상 이어 받기. 빌드 서버에는 iPhone 이 없어서 이 부분은 가짜 iPhone 으로만 시험했어요.
+- [ ] 문제가 나면 사용자에게 '진단 정보 보기'(device.log 포함) 내용을 받아서 고치기
 
 ### 작업 기록
+- 2026-10-27 v1.0.0 제작: 엔진(Go) · iPhone 도우미(Swift, ImageCaptureCore) · 화면 · 껍데기 · 아이콘 · 가이드 · 빌드 서버.
+  리눅스: go test(가져오기 · 정리 · Live 이름 · 잠김/케이블 빠짐 → 이어 받기 · 앱 꺼짐 → 이어서 · 지우기) + scripts/ui-test.py(18개 통과).
+  맥 빌드 서버 1차: iPhone 도우미의 requestContentsAuthorization/requestControlAuthorization 은 macOS 에서 쓸 수 없음(iOS 전용) → 뺌.
+  맥 빌드 서버 2차: build=ok · smoke=ok (25/25, macOS 15.7). 스크린샷이 확정 시안과 같음 확인. v1.0.0 릴리스 · 처음 설치용 zip 전달.
 - 2026-10-27 디자인 확정. 사용자 요청 정리:
   날짜별(연/월/일) 자동 정리, 저장 폴더는 기본(사진/MyPhotoBook) + 다른 폴더 지정, 사진 · 동영상 같은 방식,
   이미 옮긴 것 건너뛰기, 복사 확인 후에만 iPhone에서 지우기, Live Photo 묶음 유지, 미리보기 켜고 끄기(기본 켬),
@@ -56,3 +65,49 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 - 연결 화면: 그림 + 01 케이블 · 02 잠금 풀기 · 03 신뢰 + 자동 잠금 끄기 팁
 - 설정: 저장 위치 · 폴더 정리 예시 · 가져오기 스위치 6개 · 화면(맥 설정 따름/라이트/다크) · 업데이트(버전 · 업데이트 확인 · 진단 정보 보기)
 - 아이콘: 초록 천 표지(#1F6B52, 왼쪽 등) 위에 겹친 사진 세 장 + 아래에 MyPhotoBook(#FBF3DF) · _ROAD(#F2B23A) 두 줄
+
+## 구조
+
+```
+app/shell/main.swift    MyPhotoBook_ROAD.app 본체(Swift/AppKit): Dock 아이콘 · 메뉴 · WKWebView 창 · 엔진 실행/종료 · Dock 다시 열기 ·
+                        업데이트 후 다시 열기(restart-requested → NSWorkspace) · 가져오는 동안 잠자기 막기(beginActivity) ·
+                        가져오는 중 ⌘Q 하면 한 번 묻기(MPB_NO_QUIT_ASK=1 이면 안 물음) · launcher.log
+app/device/main.swift   mpbroad-device: ImageCaptureCore 로 iPhone 찾기 · 목록 · 썸네일 · 이어 받기(requestReadData 4MB씩 + sha256) ·
+                        지우기(requestDeleteFiles, didRemove 로 확인) · 잠김 감지(isAccessRestrictedAppleDevice). 엔진의 자식, stdin 이 닫히면 끝.
+app/Info.plist          LSUIElement 없음, NSAllowsLocalNetworking, 자동/갑작스런 종료 끔, NSCamera/PhotoLibraryUsageDescription
+app/AppIcon.svg         → scripts/icon.py → AppIcon.png · AppIcon.icns (Space Grotesk 글자)
+engine/main.go          서버 · 토큰 · 설정(settings.json) · 저장 위치(기본 ~/Pictures/MyPhotoBook, 다른 폴더) · 라우트
+engine/device.go        Device 인터페이스 + Swift 도우미와 JSON 줄 주고받기(다시 켜기 · 응답 기다리기 · 2분 무응답이면 실패)
+engine/fakedevice.go    시험용 가짜 iPhone (폴더, .locked = 잠김, 폴더 없음 = 빠짐, .rate = 천천히)
+engine/library.go       파일 → 묶음(Asset): Live Photo(같은 폴더 · 같은 이름 사진+MOV) · RAW+JPEG · AAE 등은 숨김.
+                        파일 id = sha1(폴더|이름|크기|찍은시각)[:16]. 이미 옮김 = 기록(imported.jsonl) 또는 정리될 자리에 같은 크기 파일
+engine/journal.go       Support/imported.jsonl (가져온 기록 · 지운 표시)
+engine/jobs.go          가져오기 작업: job.json(계획) + job.log(파일마다 결과) → 앱이 꺼져도 이어서. 받는 중 파일은
+                        <저장 폴더>/.mpbroad-partial/<id>.part (같은 디스크라 rename 으로 정리). 잠김/빠짐 → 기다렸다 자동 이어서.
+                        확인 = 크기 + 다시 읽은 sha256 == 받으며 계산한 sha256. 같은 이름 다른 파일이면 _1 (Live 는 짝도 같이).
+                        지우기: 확인된 것만(onlyOnMac) · 바로 지우기(direct) · 먼저 옮긴 뒤 지우기(autoDelete)
+engine/thumbs.go        Support/cache/thumbs/<id>.jpg (320px, 60일 안 보면 지움)
+engine/update.go        releases/latest.json 자동 업데이트 (MSROAD 와 같음, 맥 전용)
+engine/supervise.go     지킴이 (MSROAD 와 같음)  · diag.go: /diag 진단 페이지(device.log 포함)
+engine/web/             index.html · css/app.css(확정 디자인 토큰) · js/app.js(화면 전체) · fonts(IBM Plex Sans KR, Space Grotesk, OFL)
+scripts/build-mac.sh    (맥) go test → Go 엔진 + swiftc 껍데기 · 도우미 → 서명 → dist/MPBROAD-<v>.zip · dist/MyPhotoBook_ROAD.zip
+scripts/smoke-mac.sh    (맥) A 켜기·진짜 도우미·자식 관계 B 다시 열기 C 도우미/엔진 고장 → 다시 켬 · ⌘Q
+                        I 가짜 iPhone 가져오기 → 강제 종료 → 이어서 → 정리 확인 → 지우기  E 종료 버튼  G 업데이트 뒤 다시 열기
+scripts/ci-mac.sh       빌드 서버 진입점 → ci-results 브랜치 (status.json · results.txt · shot-*.png · zip · 기록)
+scripts/release.sh      ci-results 확인 → releases/MPBROAD-<v>.zip · latest.json · dist/MyPhotoBook_ROAD.zip
+scripts/ui-test.py      리눅스 화면 시험 (Playwright, 가짜 iPhone) · scripts/make-testdata.py · fake-iphone.sh · testdata/
+scripts/guide.py        docs/guide.html → docs/MyPhotoBook_ROAD_사용가이드.png
+```
+엔진 실행 사슬: MyPhotoBook_ROAD.app → mpbroad-engine(지킴이, MPB_SUPERVISOR=1) → mpbroad-engine(엔진, MPB_CHILD=1) → mpbroad-device.
+
+### 리눅스에서 시험하는 법
+`cd engine && go test ./... && go build -o /tmp/mpb-engine .` → `python3 scripts/ui-test.py /tmp/mpb-ui` (스크린샷 · results.txt).
+손으로: `bash scripts/fake-iphone.sh /tmp/x/iphone` 후 `MPB_SUPPORT=/tmp/x/sup MPB_FAKE_DEVICE=/tmp/x/iphone MPB_DEFAULT_DEST=/tmp/x/dest
+MPB_TOKEN=tok MPB_PORT=47999 /tmp/mpb-engine` → http://127.0.0.1:47999/?t=tok
+
+## 업데이트 내보내는 법 (Claude용)
+1. 수정 → `VERSION` 올리기 → 커밋 · 푸시 (app/ · engine/ · VERSION 이 바뀌면 맥 빌드 서버가 자동으로 돎, 5~10분)
+2. `git ls-remote origin ci-results` 가 바뀔 때까지 기다린 뒤:
+   `git fetch origin +refs/heads/ci-results:refs/remotes/origin/ci-results && git archive origin/ci-results | tar -x -C <임시폴더>`
+   → status.json(build/smoke 모두 ok) · results.txt · shot-*.png 확인
+3. `scripts/release.sh --notes "바뀐 점 1" "바뀐 점 2"` → 커밋 · 푸시. 처음 설치용은 dist/MyPhotoBook_ROAD.zip.
