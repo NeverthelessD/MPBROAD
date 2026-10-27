@@ -175,7 +175,12 @@ function renderMainShell() {
   sc.addEventListener('change', onListChange);
   sc.addEventListener('load', e => { if (e.target.tagName === 'IMG') e.target.classList.add('ok'); }, true);
   sc.addEventListener('error', e => { if (e.target.tagName === 'IMG') e.target.remove(); }, true);
-  sc.addEventListener('scroll', () => requestAnimationFrame(spyRail), { passive: true });
+  sc.addEventListener('scroll', () => { holdCancel(); requestAnimationFrame(spyRail); }, { passive: true });
+  sc.addEventListener('pointerdown', holdStart);
+  sc.addEventListener('pointermove', holdMove);
+  sc.addEventListener('pointerover', e => { const t = e.target.closest('.tile, .row[data-id]'); S.hoverId = t ? t.dataset.id : null; });
+  sc.addEventListener('pointerleave', () => { S.hoverId = null; });
+  sc.addEventListener('contextmenu', e => { if (hold) e.preventDefault(); });
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.tab = b.dataset.tab; S.listKey = ''; renderList(); sc.scrollTop = 0; } });
   $('#kinds').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.kind = b.dataset.kind; S.listKey = ''; renderList(); sc.scrollTop = 0; } });
   $('#selAll').addEventListener('click', () => {
@@ -233,7 +238,7 @@ function tileHTML(a) {
 
 function rowHTML(a) {
   const kind = a.k === 'l' ? 'Live Photo' : a.k === 'v' ? '동영상' : '사진';
-  return `<div class="row${a.done ? ' done' : ''}"><input type="checkbox" data-id="${a.id}" aria-label="${esc(a.n)} 선택"${S.sel.has(a.id) ? ' checked' : ''}>` +
+  return `<div class="row${a.done ? ' done' : ''}" data-id="${a.id}"><input type="checkbox" data-id="${a.id}" aria-label="${esc(a.n)} 선택"${S.sel.has(a.id) ? ' checked' : ''}>` +
     `<span class="nm">${esc(a.n)}</span><span>${kind}</span><span class="muted">${bytes(a.s)}</span><span class="st${a.done && !a.onMac ? ' gone' : ''}">${a.done ? (a.onMac ? '이미 옮김' : '맥에 없음') : '새 항목'}</span></div>`;
 }
 
@@ -414,6 +419,7 @@ function syncSel() {
 }
 
 function onListClick(e) {
+  if (S.suppressClick) { S.suppressClick = false; return; }
   const yBtn = e.target.closest('button[data-year]');
   if (yBtn) {
     const y = yBtn.dataset.year;
@@ -480,6 +486,146 @@ async function onBarClick(e) {
     } catch (err) { toast(err.message, true); b.disabled = false; }
   }
   if (act === 'delete') openDelete([...S.sel]);
+}
+
+// ------------------------------------------------------------------ 길게 눌러 미리보기 (손을 떼면 닫힘)
+
+const HOLD_MS = 400;
+let hold = null;
+
+function holdStart(e) {
+  if (e.button !== 0 || e.target.closest('input, button[data-day], button[data-year], button[data-month]')) return;
+  const el = e.target.closest('.tile, .row[data-id]');
+  if (!el) return;
+  holdCancel();
+  let ring = null;
+  if (el.classList.contains('tile')) {
+    ring = document.createElement('span');
+    ring.className = 'hold';
+    ring.innerHTML = '<svg viewBox="0 0 56 56" aria-hidden="true"><circle class="bg" cx="28" cy="28" r="24"/><circle class="fg" cx="28" cy="28" r="24"/></svg>';
+    el.appendChild(ring);
+  }
+  el.classList.add('holding');
+  hold = { id: el.dataset.id, el, ring, x: e.clientX, y: e.clientY, fired: false };
+  hold.timer = setTimeout(() => {
+    if (!hold) return;
+    hold.fired = true;
+    if (hold.ring) hold.ring.remove();
+    hold.el.classList.remove('holding');
+    openPeek(hold.id);
+  }, HOLD_MS);
+}
+
+function holdMove(e) {
+  if (hold && !hold.fired && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) holdCancel();
+}
+
+function holdEnd() {
+  if (!hold) return;
+  if (hold.fired) {
+    // 손을 떼면 닫고, 이번 누르기는 '고르기'로 치지 않아요
+    S.suppressClick = true;
+    setTimeout(() => { S.suppressClick = false; }, 350);
+    closePeek();
+  }
+  holdCancel();
+}
+
+function holdCancel() {
+  if (!hold) return;
+  clearTimeout(hold.timer);
+  if (hold.ring) hold.ring.remove();
+  hold.el.classList.remove('holding');
+  hold = null;
+}
+
+window.addEventListener('pointerup', holdEnd);
+window.addEventListener('pointercancel', holdEnd);
+window.addEventListener('blur', () => { holdCancel(); closePeek(); });
+document.addEventListener('keyup', e => { if ((e.key === ' ' || e.code === 'Space') && S.peek) closePeek(); });
+
+function fmtWhen(sec) {
+  const d = new Date(sec * 1000), h = d.getHours();
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]}) ${h < 12 ? '오전' : '오후'} ${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function openPeek(id) {
+  const a = S.items.find(x => x.id === id);
+  if (!a) return;
+  closePeek();
+  S.peek = { id };
+  let el = $('#peek');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'peek';
+    el.className = 'peek';
+    document.body.appendChild(el);
+  }
+  const kind = a.k === 'l' ? 'Live Photo' : a.k === 'v' ? '동영상' : '사진';
+  const chip = !a.done ? ['new', '새 항목 · 아직 맥에 없어요'] : a.onMac ? ['ok', '이미 옮김 · 맥에 있어요'] : ['gone', '맥에 없음'];
+  const q = `id=${a.id}&t=${T}`;
+  el.innerHTML = `
+  <div class="pk-card" role="dialog" aria-label="${esc(a.n)} 미리보기">
+    <div class="pk-media">
+      <img class="pk-thumb" alt="" src="/api/thumb?id=${a.t}&t=${T}">
+      ${a.k !== 'v' ? `<img class="pk-full" alt="" src="/api/view?${q}&p=photo">` : ''}
+      ${a.k !== 'p' ? '<video class="pk-video" muted loop playsinline></video>' : ''}
+      ${a.k === 'l' ? '<span class="pk-live"><b>LIVE</b>움직이는 모습 재생 중</span>' : ''}
+      ${a.k === 'v' ? '<div class="pk-load hidden"><span>iPhone에서 동영상을 받는 중이에요</span><i class="pk-bar"><i></i></i><small></small></div>' : ''}
+    </div>
+    <div class="pk-info">
+      <div class="pk-name"><b>${esc(a.n)}</b><span>${fmtWhen(a.d)} · ${bytes(a.s)}${a.dur ? ' · ' + dur(a.dur) : ''} · ${kind}</span></div>
+      <span class="pk-chip ${chip[0]}"><i></i>${chip[1]}</span>
+    </div>
+    <div class="pk-hint">손을 떼면 바로 닫혀요 · 마음에 들면 놓은 뒤 한 번 눌러서 고르세요</div>
+  </div>`;
+  el.classList.add('on');
+  const full = el.querySelector('.pk-full');
+  if (full) {
+    full.onload = () => { full.classList.add('ok'); const th = el.querySelector('.pk-thumb'); if (th) th.style.opacity = 0; };
+    full.onerror = () => full.remove();
+  }
+  const video = el.querySelector('.pk-video');
+  if (video) watchMotion(a, video, el);
+}
+
+// 동영상 · Live 영상: 맥에 있으면 바로, 없으면 받는 동안 진행률을 보여 주다가 재생해요
+async function watchMotion(a, video, el) {
+  const q = `id=${a.id}&t=${T}&p=motion`;
+  const load = el.querySelector('.pk-load');
+  for (let i = 0; S.peek && S.peek.id === a.id; i++) {
+    let st;
+    try { st = await api(`/api/view/status?id=${a.id}&p=motion`); } catch (e) { return; }
+    if (!S.peek || S.peek.id !== a.id) return;
+    if (st.ready) {
+      if (load) load.classList.add('hidden');
+      video.oncanplay = () => { video.classList.add('ok'); if (a.k === 'v') { const th = el.querySelector('.pk-thumb'); if (th) th.style.opacity = 0; } };
+      video.src = `/api/view?${q}`;
+      video.play().catch(() => {});
+      return;
+    }
+    if (st.error) {
+      if (load) { load.classList.remove('hidden'); load.querySelector('span').textContent = st.error; }
+      return;
+    }
+    if (load && i > 0) {
+      load.classList.remove('hidden');
+      const pct = st.size ? Math.floor(st.done / st.size * 100) : 0;
+      load.querySelector('.pk-bar i').style.width = pct + '%';
+      load.querySelector('small').textContent = `${bytes(st.size)} 중 ${bytes(st.done)} · 한 번 받아 두면 다음엔 바로 재생돼요`;
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+}
+
+function closePeek() {
+  if (!S.peek) return;
+  S.peek = null;
+  const el = $('#peek');
+  if (!el) return;
+  el.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
+  el.classList.remove('on');
+  el.innerHTML = '';
 }
 
 // ------------------------------------------------------------------ 이미 옮긴 항목 다시 옮기기
@@ -985,6 +1131,12 @@ window.addEventListener('error', e => { api('/api/clientlog', { items: [`${e.mes
 window.addEventListener('unhandledrejection', e => { api('/api/clientlog', { items: [`promise: ${e.reason && e.reason.message || e.reason}`] }).catch(() => {}); });
 
 document.addEventListener('keydown', e => {
+  if ((e.key === ' ' || e.code === 'Space') && S.screen === 'main' && !S.settingsOpen && !e.target.closest('input, textarea') && !document.querySelector('.scrim')) {
+    e.preventDefault();
+    if (!e.repeat && S.hoverId && !S.peek) openPeek(S.hoverId);
+    return;
+  }
+  if (e.key === 'Escape' && S.peek) { closePeek(); return; }
   if (e.key === 'Escape') {
     if (S.del) { S.del = null; closeLayer('del'); return; }
     if (S.redo) { S.redo = null; closeLayer('redo'); return; }

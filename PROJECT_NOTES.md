@@ -29,6 +29,12 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 - [ ] 문제가 나면 사용자에게 '진단 정보 보기'(device.log 포함) 내용을 받아서 고치기
 
 ### 작업 기록
+- 2026-10-27 v1.1.0 — 사용자 요청: 옮기기 전 · 뒤에 사진을 크게 확인 (지울지 판단용). 시안 → 사용자 결정: 길게 누르면 팝업,
+  **손을 떼면 바로 닫힘**, 전체 화면 보기는 없음 (캔버스 Peek · PeekHold, 확정).
+  화면: 타일/목록 줄을 0.4초 누르면 동그라미가 차오르고 팝업(#peek, pointer-events 없음) · 손 떼면 닫고 그 누르기는 고르기로 안 침
+  (suppressClick) · 마우스를 올리고 Space 를 누르는 동안. Live 는 영상 자동 재생, 동영상은 소리 없이.
+  엔진 view.go: /api/view?id=<묶음>&p=photo|motion · /api/view/status. 옮긴 것은 기록의 맥 파일을 그대로(다시 안 받음),
+  아직 iPhone 에만 있으면 Support/cache/view 에 받아 둠(이어 받기 · 이틀/3GB 넘으면 정리). HEIC 등은 sips 로 JPEG(2560px).
 - 2026-10-27 v1.0.3 — 사용자 질문: 잠시 멈춤 → 케이블 빼기 → 다시 연결 → 이어서 하기 되나? → 됨(시험 추가: TestPauseUnplugReplugResume).
   보강: 다시 연결했을 때 iPhone 이 찍은 날짜를 다르게 알려 주면 파일 id 가 바뀌어 '찾을 수 없음'이 되던 경우 →
   Library.FileLoose(같은 이름 · 같은 크기가 하나뿐이면 그것)로 이어서 함 (TestResumeWhenDateReportedDifferently).

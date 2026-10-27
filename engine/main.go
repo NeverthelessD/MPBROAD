@@ -62,6 +62,7 @@ type App struct {
 	journal *Journal
 	jobs    *Jobs
 	thumbs  *Thumbs
+	view    *Viewer
 	upd     *Updater
 
 	lastSeen atomic.Int64
@@ -110,6 +111,7 @@ func main() {
 	app.dev = newDevice(support)
 	app.lib = NewLibrary(app.dev, app.journal)
 	app.thumbs = NewThumbs(support, app.dev)
+	app.view = NewViewer(support, app.dev)
 	app.jobs = NewJobs(support, app.dev, app.lib, app.journal)
 	app.upd = NewUpdater(support)
 	app.dev.Start(func() { app.lib.Changed() })
@@ -410,6 +412,8 @@ func (a *App) routes() http.Handler {
 	api("/api/thumb", func(w http.ResponseWriter, r *http.Request) {
 		a.thumbs.Serve(w, r, r.URL.Query().Get("id"))
 	})
+	api("/api/view", func(w http.ResponseWriter, r *http.Request) { a.view.Serve(w, r) })
+	api("/api/view/status", func(w http.ResponseWriter, r *http.Request) { a.view.Status(w, r) })
 	api("/api/settings", a.handleSettings)
 	api("/api/choose-folder", a.handleChooseFolder)
 	api("/api/reveal", func(w http.ResponseWriter, r *http.Request) {
@@ -621,6 +625,8 @@ func lastLine(s string) string {
 func init() {
 	mime.AddExtensionType(".js", "text/javascript")
 	mime.AddExtensionType(".woff2", "font/woff2")
+	mime.AddExtensionType(".mov", "video/quicktime")
+	mime.AddExtensionType(".heic", "image/heic")
 }
 
 func recoverLog(where string) {

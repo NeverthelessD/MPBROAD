@@ -96,7 +96,7 @@ func recordRequests(next http.Handler) http.Handler {
 				sw.code = 599
 			}
 			p := r.URL.Path
-			quiet := (p == "/api/thumb" || p == "/api/poll" || p == "/api/items" || strings.HasPrefix(p, "/fonts/")) && sw.code < 400 && v == nil
+			quiet := (p == "/api/thumb" || p == "/api/poll" || p == "/api/items" || p == "/api/view/status" || strings.HasPrefix(p, "/fonts/")) && sw.code < 400 && v == nil
 			if !quiet {
 				diag.add(reqRec{Method: r.Method, Path: p, Status: sw.code, Ms: time.Since(t0).Milliseconds(), Note: note})
 			}

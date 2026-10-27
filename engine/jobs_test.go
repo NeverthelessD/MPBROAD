@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"net/http/httptest"
+	"strings"
 	"os"
 	"path/filepath"
 	"testing"
@@ -438,5 +440,54 @@ func TestResumeWhenDateReportedDifferently(t *testing.T) {
 	b, _ := os.ReadFile(filepath.Join(e.dest, "2026/09/02/IMG_0700.MOV"))
 	if !bytes.Equal(b, big) {
 		t.Fatal("내용이 달라요")
+	}
+}
+
+func TestPeekViewFetchesOnceAndUsesMacCopy(t *testing.T) {
+	e := setupApp(t)
+	app.view = NewViewer(e.support, e.fd)
+	d := time.Date(2026, 10, 1, 9, 0, 0, 0, time.Local)
+	img := e.put(t, "IMG_0800.JPG", 50_000, d)
+	mov := e.put(t, "IMG_0800.MOV", 400_000, d)
+	e.rescan()
+	a := app.lib.Assets()[0]
+	get := func(path string) (*httptest.ResponseRecorder, []byte) {
+		req := httptest.NewRequest("GET", path, nil)
+		w := httptest.NewRecorder()
+		if strings.Contains(path, "status") {
+			app.view.Status(w, req)
+		} else {
+			app.view.Serve(w, req)
+		}
+		return w, w.Body.Bytes()
+	}
+	// 옮기기 전: iPhone 에서 받아서 보여 줘요
+	_, b := get("/api/view?id=" + a.ID + "&p=photo")
+	if !bytes.Equal(b, img) {
+		t.Fatal("옮기기 전 사진을 못 보여 줘요")
+	}
+	waitFor(t, "Live 영상 받기", 5*time.Second, func() bool {
+		_, s := get("/api/view/status?id=" + a.ID + "&p=motion")
+		return strings.Contains(string(s), `"ready":true`)
+	})
+	_, b = get("/api/view?id=" + a.ID + "&p=motion")
+	if !bytes.Equal(b, mov) {
+		t.Fatal("Live 영상 내용이 달라요")
+	}
+	// 옮긴 뒤: 맥의 파일을 보여 줘요 (미리보기 저장분을 지우고 iPhone 을 빼도)
+	if _, err := app.jobs.Create(app.lib.Assets(), app.Settings(), false, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "옮기기", 10*time.Second, func() bool { return stage() == "done" })
+	os.RemoveAll(filepath.Join(e.support, "cache", "view"))
+	os.MkdirAll(filepath.Join(e.support, "cache", "view"), 0o755)
+	os.WriteFile(filepath.Join(filepath.Dir(e.root), "..", ".locked"), nil, 0o644)
+	_, s := get("/api/view/status?id=" + a.ID + "&p=motion")
+	if !strings.Contains(string(s), `"ready":true`) {
+		t.Fatalf("옮긴 동영상인데 다시 받으려 해요: %s", s)
+	}
+	_, b = get("/api/view?id=" + a.ID + "&p=motion")
+	if !bytes.Equal(b, mov) {
+		t.Fatal("맥에 있는 영상을 못 보여 줘요")
 	}
 }
