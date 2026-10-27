@@ -216,6 +216,9 @@ func (l *Library) Snapshot(s Settings) map[string]any {
 	for _, a := range l.assets {
 		if a.Done {
 			counts["done"]++
+			if !a.OnMac {
+				counts["gone"]++ // 옮겼지만 맥에서 없어짐 (지웠거나 다른 곳으로 옮김)
+			}
 		} else {
 			counts["new"]++
 			newBytes += a.S

@@ -192,6 +192,19 @@ function renderMainShell() {
     if (sec) sc.scrollTo({ top: sec.offsetTop - sc.offsetTop, behavior: 'smooth' });
   });
   $('#actbar').addEventListener('click', onBarClick);
+  $('#notices').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'goneHide') { S.goneHidden = true; renderNotices(); return; }
+    if (b.dataset.act === 'gone') {
+      S.tab = 'done'; S.kind = 'all'; S.listKey = '';
+      S.sel.clear();
+      S.items.filter(a => a.done && !a.onMac).forEach(a => S.sel.add(a.id));
+      renderList(); syncSel();
+      sc.scrollTop = 0;
+      toast('맥에서 없어진 사진을 골랐어요. 아래 \'다시 옮기기\'를 눌러 주세요');
+    }
+  });
   $('#actbar').addEventListener('change', e => {
     if (e.target.id === 'delAfter') {
       S.settings.delAfter = e.target.checked;
@@ -211,9 +224,9 @@ function tileHTML(a) {
   let badge = '';
   if (a.k === 'l') badge += '<span class="live">LIVE</span>';
   if (a.k === 'v') badge += `<span class="dur">${a.dur ? dur(a.dur) : '동영상'}</span>`;
-  if (a.done) badge += '<span class="dimmed"></span><span class="moved">옮김</span>';
+  if (a.done) badge += a.onMac ? '<span class="dimmed"></span><span class="moved">옮김</span>' : '<span class="dimmed"></span><span class="moved gone">맥에 없음</span>';
   const kind = a.k === 'l' ? 'Live Photo' : a.k === 'v' ? '동영상' : '사진';
-  return `<button type="button" class="tile${sel ? ' sel' : ''}" data-id="${a.id}" aria-pressed="${sel}" aria-label="${esc(a.n)}, ${kind}${a.done ? ', 이미 옮김' : ''}">` +
+  return `<button type="button" class="tile${sel ? ' sel' : ''}" data-id="${a.id}" aria-pressed="${sel}" aria-label="${esc(a.n)}, ${kind}${a.done ? (a.onMac ? ', 이미 옮김' : ', 옮겼지만 맥에서 없어짐') : ''}">` +
     `<span class="ph">${a.k === 'v' ? I.video : I.photo}</span><img loading="lazy" decoding="async" alt="" src="/api/thumb?id=${a.t}&t=${T}">` +
     `${badge}<span class="chk">${I.check}</span></button>`;
 }
@@ -221,7 +234,7 @@ function tileHTML(a) {
 function rowHTML(a) {
   const kind = a.k === 'l' ? 'Live Photo' : a.k === 'v' ? '동영상' : '사진';
   return `<div class="row${a.done ? ' done' : ''}"><input type="checkbox" data-id="${a.id}" aria-label="${esc(a.n)} 선택"${S.sel.has(a.id) ? ' checked' : ''}>` +
-    `<span class="nm">${esc(a.n)}</span><span>${kind}</span><span class="muted">${bytes(a.s)}</span><span class="st">${a.done ? '이미 옮김' : '새 항목'}</span></div>`;
+    `<span class="nm">${esc(a.n)}</span><span>${kind}</span><span class="muted">${bytes(a.s)}</span><span class="st${a.done && !a.onMac ? ' gone' : ''}">${a.done ? (a.onMac ? '이미 옮김' : '맥에 없음') : '새 항목'}</span></div>`;
 }
 
 function renderList() {
@@ -325,6 +338,8 @@ function renderNotices() {
   if (!S.preview) n.push('<div class="notice">미리보기를 끄면 사진을 그리지 않아서 목록이 훨씬 빨리 열려요.</div>');
   if (d.state === 'locked') n.push('<div class="notice warn">iPhone이 잠겼어요. 잠금을 풀면 계속돼요.</div>');
   if (d.state === 'loading') n.push(`<div class="notice">iPhone 사진 목록을 불러오는 중이에요 · ${d.catalogPct || 0}%</div>`);
+  const gone = (S.counts && S.counts.gone) || 0;
+  if (gone && !S.goneHidden) n.push(`<div class="notice warn" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span>옮긴 사진 중 ${N(gone)}개가 맥에서 없어졌어요 (지웠거나 다른 곳으로 옮겼어요).</span><button type="button" class="linkbtn" data-act="gone" style="height:26px;color:inherit;text-decoration:underline">골라서 다시 옮기기</button><button type="button" class="linkbtn" data-act="goneHide" style="height:26px;color:inherit;margin-left:auto">닫기</button></div>`);
   if (dest.available === false) n.push('<div class="notice warn">저장할 디스크가 연결되어 있지 않아요. 디스크를 연결하거나 설정에서 저장 위치를 바꿔 주세요.</div>');
   const html = n.join('');
   const box = $('#notices');
@@ -341,7 +356,7 @@ function renderBar() {
     : c.new ? `새 항목 ${N(c.new)}개 · ${bytes(S.newBytes)}` : '새로 옮길 항목이 없어요';
   const line2 = dest.available === false ? '저장할 디스크가 연결되어 있지 않아요' : `${dest.label || '사진 › MyPhotoBook'} › 연 › 월 › 일`;
   let goLabel = n ? '가져오기' : '새 항목 모두 가져오기', goOff = false;
-  if (n && doneN === n) { goLabel = '이미 옮긴 항목이에요'; goOff = true; }
+  if (n && doneN === n) goLabel = '다시 옮기기';
   if (!n && !c.new) goOff = true;
   const ready = S.poll && S.poll.device && S.poll.device.state === 'ready';
   const html = `<div class="info"><b>${line1}</b><span title="${esc(dest.path || '')}">${esc(line2)}</span></div>` +
@@ -454,9 +469,10 @@ async function onBarClick(e) {
   const act = b.dataset.act;
   if (act === 'dest') return chooseDest();
   if (act === 'import') {
+    const ids = [...S.sel];
+    if (ids.length && S.items.some(a => a.done && S.sel.has(a.id))) { openRedo(ids); return; }
     b.disabled = true;
     try {
-      const ids = [...S.sel];
       await api('/api/import', ids.length ? { ids, askDelete: !!S.settings.delAfter } : { all: true, askDelete: !!S.settings.delAfter });
       S.sel.clear();
       syncSel();
@@ -464,6 +480,60 @@ async function onBarClick(e) {
     } catch (err) { toast(err.message, true); b.disabled = false; }
   }
   if (act === 'delete') openDelete([...S.sel]);
+}
+
+// ------------------------------------------------------------------ 이미 옮긴 항목 다시 옮기기
+
+function openRedo(ids) {
+  const set = new Set(ids);
+  const pick = S.items.filter(a => set.has(a.id));
+  const fresh = pick.filter(a => !a.done), gone = pick.filter(a => a.done && !a.onMac), kept = pick.filter(a => a.done && a.onMac);
+  S.redo = { pick, fresh, gone, kept, mode: gone.length ? 'gone' : fresh.length ? 'fresh' : 'all' };
+  renderRedo();
+}
+
+function renderRedo() {
+  const r = S.redo;
+  if (!r) { closeLayer('redo'); return; }
+  const n = r.pick.length, doneN = r.gone.length + r.kept.length;
+  const size = list => bytes(list.reduce((t, a) => t + a.s, 0));
+  const legend = [
+    r.fresh.length ? `<div><i style="background:var(--accent)"></i><span><b>새 항목 ${N(r.fresh.length)}개</b><span class="muted"> · 아직 옮기지 않았어요</span></span></div>` : '',
+    r.gone.length ? `<div><i style="background:var(--hot)"></i><span><b>맥에서 없어진 ${N(r.gone.length)}개</b><span class="muted"> · 옮겼던 자리에서 찾을 수 없어요 (지웠거나 다른 곳으로 옮겼어요)</span></span></div>` : '',
+    r.kept.length ? `<div><i style="background:var(--muted)"></i><span><b>맥에 그대로 있는 ${N(r.kept.length)}개</b><span class="muted"> · 옮겨 둔 사진이 그 자리에 있어요</span></span></div>` : '',
+  ].join('');
+  const opt = (mode, title, sub) => `<label class="choice${r.mode === mode ? ' on' : ''}"><input type="radio" name="rm" value="${mode}"${r.mode === mode ? ' checked' : ''}><span><b>${title}</b><small>${sub}</small></span></label>`;
+  const opts = [
+    r.fresh.length ? opt('fresh', `새 항목 ${N(r.fresh.length)}개만 가져오기`, '이미 옮긴 것은 건너뛰어요') : '',
+    r.gone.length ? opt('gone', `맥에서 없어진 ${N(r.gone.length)}개${r.fresh.length ? '도' : ''} 다시 옮기기${r.gone.length === doneN ? ' (추천)' : ''}`, `${r.fresh.length ? `새 항목과 함께 ${N(r.fresh.length + r.gone.length)}개를 옮겨요. ` : ''}맥에 그대로 있는 것은 건너뛰어요`) : '',
+    r.kept.length ? opt('all', `이미 옮긴 ${N(doneN)}개 모두 다시 옮기기`, '정리 폴더에 같은 파일이 그대로 있으면 건너뛰고(사본을 만들지 않아요), 없으면 다시 복사해요') : '',
+  ].filter(Boolean);
+  const count = r.mode === 'fresh' ? r.fresh.length : r.mode === 'gone' ? r.fresh.length + r.gone.length : n;
+  const label = r.mode === 'fresh' ? `${N(count)}개 가져오기` : `${N(count)}개 다시 옮기기`;
+  openLayer('redo', `
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="redoTitle">
+    <div class="head"><span class="ico ${r.gone.length ? 'hot' : 'ok'}">${I.again}</span><div><h2 id="redoTitle">${doneN === n ? `이미 옮긴 ${N(n)}개를 다시 옮길까요?` : `고른 ${N(n)}개 중 ${N(doneN)}개는 이미 옮긴 항목이에요`}</h2><span class="sub">약 ${size(r.pick)} · 저장 위치 ${esc(((S.poll && S.poll.dest) || {}).label || '')}</span></div></div>
+    <div class="legend">${legend}</div>
+    ${opts.length > 1 ? `<div style="display:flex;flex-direction:column;gap:8px">${opts.join('')}</div>` : `<span class="muted">${r.mode === 'all' ? '정리 폴더에 같은 파일이 그대로 있으면 건너뛰고(사본을 만들지 않아요), 없으면 다시 복사해요.' : ''}</span>`}
+    <span class="foot">다시 옮겨도 연 / 월 / 일 폴더에 똑같이 정리돼요.</span>
+    <div class="btns"><button type="button" class="b2" data-act="cancel">취소</button><button type="button" class="b1" data-act="go">${label}</button></div>
+  </div>`, async e => {
+    const radio = e.target.closest('input[name="rm"]');
+    if (radio) { r.mode = radio.value; renderRedo(); return; }
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'cancel') { S.redo = null; closeLayer('redo'); return; }
+    if (b.dataset.act === 'go') {
+      const list = r.mode === 'fresh' ? r.fresh : r.mode === 'gone' ? r.fresh.concat(r.gone) : r.pick;
+      b.disabled = true;
+      try {
+        await api('/api/import', { ids: list.map(a => a.id), redo: r.mode !== 'fresh', askDelete: !!S.settings.delAfter });
+        S.redo = null; closeLayer('redo');
+        S.sel.clear(); syncSel();
+        await poll(true);
+      } catch (err) { toast(err.message, true); b.disabled = false; }
+    }
+  });
 }
 
 // ------------------------------------------------------------------ 고른 사진 지우기 (⑤)
@@ -663,16 +733,17 @@ function jobView(j) {
       key: 'done|' + j.askDelete,
       html: `
       <div class="card" role="dialog" aria-modal="true">
-        <div class="head"><span class="ico ${failed ? 'hot' : 'ok'}">${failed ? I.warn : I.okBig}</span><div><h2>${failed ? `${N(okAssets)}개를 옮겼어요 · ${N(failed)}개는 못 옮겼어요` : `${N(okAssets)}개를 안전하게 옮겼어요`}</h2><span class="sub">${esc(j.dest)} 안에 연 / 월 / 일로 정리했어요</span></div></div>
+        <div class="head"><span class="ico ${failed ? 'hot' : 'ok'}">${failed ? I.warn : I.okBig}</span><div><h2>${failed ? `${N(okAssets)}개를 옮겼어요 · ${N(failed)}개는 못 옮겼어요` : !j.ok && j.skipped ? `${N(okAssets)}개 모두 맥에 그대로 있어요` : `${N(okAssets)}개를 안전하게 옮겼어요`}</h2><span class="sub">${!j.ok && j.skipped && !failed ? `${esc(j.dest)} 의 연 / 월 / 일 폴더에 이미 있어서 다시 복사하지 않았어요` : `${esc(j.dest)} 안에 연 / 월 / 일로 정리했어요`}</span></div></div>
         <div class="stats">
-          <div><b>${N(j.ok + j.skipped)}</b><span>복사</span></div>
+          <div><b>${N(j.ok)}</b><span>복사</span></div>
           <div><b class="ac">${N(j.ok + j.skipped)}</b><span>확인 끝</span></div>
           <div><b>${N(j.livePairs)}</b><span>Live Photo 짝</span></div>
           <div><b>${N(failed)}</b><span>확인 실패</span></div>
         </div>
+        ${j.skipped && j.ok ? `<span class="muted">정리 폴더에 같은 파일이 이미 있던 ${N(j.skipped)}개는 다시 복사하지 않았어요.</span>` : ''}
         ${failed ? `<div class="box">${(j.failedNames || []).slice(0, 5).map(x => `<span class="muted">${esc(x)}</span>`).join('')}<span>못 옮긴 항목은 iPhone에 그대로 있어요. 다시 가져오기를 누르면 그것만 옮겨요.</span></div>` : ''}
         ${j.askDelete ? `<div class="box line"><b style="font-size:15px">확인을 마친 ${N(okAssets)}개를 iPhone에서 지울까요?</b>
-          <span class="muted">지우면 iPhone 공간이 약 ${bytes(j.bytes)} 늘어나요. 확인에 실패한 항목은 지우지 않아요.</span>
+          <span class="muted">지우면 iPhone 공간이 약 ${bytes(j.freeBytes != null ? j.freeBytes : j.bytes)} 늘어나요. 확인에 실패한 항목은 지우지 않아요.</span>
           <span class="muted">공간이 바로 늘지 않으면 iPhone 사진 앱의 '최근 삭제된 항목'을 비워 주세요.</span></div>` : ''}
         <div class="btns"><button type="button" class="bl left" data-act="reveal">폴더 열기</button>
           ${j.askDelete ? '<button type="button" class="b2" data-act="dismiss">지우지 않기</button><button type="button" class="bd" data-act="delVerified">iPhone에서 지우기</button>' : '<button type="button" class="b1" data-act="dismiss">확인</button>'}</div>
@@ -916,6 +987,7 @@ window.addEventListener('unhandledrejection', e => { api('/api/clientlog', { ite
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (S.del) { S.del = null; closeLayer('del'); return; }
+    if (S.redo) { S.redo = null; closeLayer('redo'); return; }
     if (S.settingsOpen) { closeSettings(); return; }
     if (S.sel.size) { S.sel.clear(); syncSel(); }
   }

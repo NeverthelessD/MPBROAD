@@ -314,3 +314,49 @@ func TestDeleteSelectedImportFirst(t *testing.T) {
 		t.Fatal("바로 지우기가 안 됐어요")
 	}
 }
+
+func TestRedoAfterDeletedOnMac(t *testing.T) {
+	e := setupApp(t)
+	d := time.Date(2026, 8, 1, 9, 0, 0, 0, time.Local)
+	a := e.put(t, "IMG_0500.JPG", 1000, d)
+	e.put(t, "IMG_0501.JPG", 1000, d)
+	e.rescan()
+	if _, err := app.jobs.Create(app.lib.Assets(), app.Settings(), false, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "끝", 10*time.Second, func() bool { return stage() == "done" })
+	app.jobs.Dismiss()
+	// 맥에서 실수로 하나 지움
+	os.Remove(filepath.Join(e.dest, "2026/08/01/IMG_0500.JPG"))
+	app.lib.Changed()
+	counts := app.lib.Snapshot(app.Settings())["counts"].(map[string]int)
+	if counts["done"] != 2 || counts["gone"] != 1 {
+		t.Fatalf("맥에서 없어진 것을 알아보지 못해요: %v", counts)
+	}
+	// 기록대로라면 '새로 옮길 것 없음'
+	if _, err := app.jobs.Create(app.lib.Assets(), app.Settings(), false, nil); err == nil {
+		t.Fatal("다시 옮기기 없이도 옮겨졌어요")
+	}
+	// 다시 옮기기: 없어진 것은 복사, 그대로 있는 것은 건너뜀 (사본 없음)
+	s := app.Settings()
+	s.SkipDone = false
+	if _, err := app.jobs.Create(app.lib.Assets(), s, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "다시 옮기기 끝", 10*time.Second, func() bool { return stage() == "done" })
+	st := app.jobs.State()
+	if st["ok"].(int) != 1 || st["skipped"].(int) != 1 {
+		t.Fatalf("다시 옮긴 결과가 이상해요: %v", st)
+	}
+	b, _ := os.ReadFile(filepath.Join(e.dest, "2026/08/01/IMG_0500.JPG"))
+	if !bytes.Equal(b, a) {
+		t.Fatal("지운 사진이 돌아오지 않았어요")
+	}
+	if ents, _ := os.ReadDir(filepath.Join(e.dest, "2026/08/01")); len(ents) != 2 {
+		t.Fatalf("사본이 생겼어요: %d개", len(ents))
+	}
+	app.lib.Changed()
+	if c := app.lib.Snapshot(app.Settings())["counts"].(map[string]int); c["gone"] != 0 {
+		t.Fatalf("다시 옮긴 뒤에도 '맥에 없음': %v", c)
+	}
+}

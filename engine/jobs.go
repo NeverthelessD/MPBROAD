@@ -774,7 +774,7 @@ func (j *Jobs) finish(ctx context.Context) {
 
 func (j *Jobs) summaryLocked() map[string]any {
 	var ok, skip, fail int
-	var bytes int64
+	var bytes, freeBytes int64
 	assets := map[string]bool{}
 	live := map[string]bool{}
 	deletable := map[string]bool{}
@@ -787,8 +787,10 @@ func (j *Jobs) summaryLocked() map[string]any {
 		case "ok":
 			ok++
 			bytes += f.Size
+			freeBytes += f.Size
 		case "skip":
 			skip++
+			freeBytes += f.Size
 		default:
 			fail++
 			failedAsset[f.Asset] = true
@@ -809,7 +811,7 @@ func (j *Jobs) summaryLocked() map[string]any {
 	for a := range deletable {
 		ids = append(ids, a)
 	}
-	return map[string]any{"assets": len(assets), "files": len(j.spec.Files), "ok": ok, "skipped": skip, "failed": fail, "bytes": bytes,
+	return map[string]any{"assets": len(assets), "files": len(j.spec.Files), "ok": ok, "skipped": skip, "failed": fail, "bytes": bytes, "freeBytes": freeBytes,
 		"livePairs": len(live), "deletable": len(deletable), "deletableIDs": ids, "failedNames": failedNames,
 		"dest": destLabel(j.spec.Dest), "destPath": j.spec.Dest}
 }
@@ -995,6 +997,7 @@ func (a *App) handleImport(w http.ResponseWriter, r *http.Request) {
 		IDs       []string `json:"ids"`
 		All       bool     `json:"all"`
 		AskDelete bool     `json:"askDelete"`
+		Redo      bool     `json:"redo"` // 이미 옮긴 항목도 다시 옮기기 (맥에서 지웠을 때)
 	}
 	if err := readJSON(r, &in); err != nil {
 		jsonError(w, 400, "bad request")
@@ -1005,7 +1008,12 @@ func (a *App) handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	assets := a.assetsFor(in.IDs, in.All)
-	n, err := a.jobs.Create(assets, a.Settings(), in.AskDelete, nil)
+	s := a.Settings()
+	if in.Redo {
+		// 기록은 보지 않고 다시 옮겨요. 정리될 자리에 같은 파일이 그대로 있으면 그건 건너뛰어요(사본을 만들지 않아요).
+		s.SkipDone = false
+	}
+	n, err := a.jobs.Create(assets, s, in.AskDelete, nil)
 	if err != nil {
 		jsonError(w, 400, err.Error())
 		return

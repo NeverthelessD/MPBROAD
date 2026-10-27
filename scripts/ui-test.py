@@ -154,7 +154,39 @@ async def main():
         await pg.click(".scrim .b2")  # 지우지 않기
         await pg.wait_for_timeout(1200)
         ok("모두 옮긴 뒤 새 항목 0", (await pg.locator("#tabs button[data-tab=new]").inner_text()).endswith(" 0"))
-        await pg.click("#tabs button[data-tab=done]")
+        # 맥에서 실수로 지움 → '맥에 없음' → 다시 옮기기
+        day = f"{T}/dest/2026/10/26"
+        gone = sorted(x for x in os.listdir(day) if x.endswith(".JPG"))[:2]
+        for x in gone: os.remove(f"{day}/{x}")
+        api("/api/settings", {"skipDone": True})  # 설정을 건드려 목록을 다시 만들게 함
+        await pg.wait_for_selector("#notices [data-act=gone]", timeout=8000)
+        await pg.screenshot(path=f"{OUT}/11a-gone-notice.png")
+        ok("맥에서 지운 2개 알림", "2개가 맥에서 없어졌어요" in await pg.locator("#notices").inner_text())
+        await pg.click("#notices [data-act=gone]")
+        await pg.wait_for_timeout(500)
+        ok("'맥에 없음' 표시 2개", await pg.locator(".tile .moved.gone").count() == 2)
+        go = await pg.locator(".actbar .go").inner_text()
+        ok("버튼이 '다시 옮기기'로 (눌러짐)", go == "다시 옮기기" and await pg.locator(".actbar .go").is_enabled(), go)
+        await pg.click(".actbar .go")
+        await pg.wait_for_selector(".scrim [data-layer], .scrim .legend")
+        await pg.screenshot(path=f"{OUT}/11b-redo.png")
+        ok("다시 옮기기 창", "이미 옮긴 2개를 다시 옮길까요" in await pg.locator(".scrim h2").inner_text())
+        await pg.click(".scrim .b1")
+        await until(pg, "document.querySelector('.scrim h2') && document.querySelector('.scrim h2').textContent.includes('옮겼어요')", 20000)
+        ok("지운 사진이 정리 폴더로 돌아옴", all(os.path.exists(f"{day}/{x}") for x in gone))
+        await pg.click(".scrim .b2, .scrim .b1")
+        # 맥에 그대로 있는 것을 다시 옮기기 → 사본 없이 건너뜀
+        await pg.wait_for_timeout(1000)
+        await pg.locator(".tile").nth(0).click()
+        await pg.click(".actbar .go")
+        await pg.wait_for_selector(".scrim .legend")
+        await pg.screenshot(path=f"{OUT}/11c-redo-kept.png")
+        await pg.click(".scrim .b1")
+        await until(pg, "document.querySelector('.scrim h2') && document.querySelector('.scrim h2').textContent.includes('그대로 있어요')", 20000)
+        st = api("/api/poll")["job"]
+        ok("그대로 있는 것은 사본 없이 건너뜀", st.get("skipped", 0) >= 1 and st.get("ok") == 0, json.dumps({k: st.get(k) for k in ("ok", "skipped")}))
+        await pg.screenshot(path=f"{OUT}/11d-redo-done.png")
+        await pg.click(".scrim .b2, .scrim .b1")
         await pg.wait_for_timeout(500)
         await pg.screenshot(path=f"{OUT}/11-done-tab.png")
 
