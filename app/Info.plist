@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ko</string>
+	<key>CFBundleName</key>
+	<string>MyPhotoBook_ROAD</string>
+	<key>CFBundleDisplayName</key>
+	<string>MyPhotoBook_ROAD</string>
+	<key>CFBundleExecutable</key>
+	<string>MyPhotoBook_ROAD</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.nevertheless-d.myphotobook-road</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__VERSION__</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>LSArchitecturePriority</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.photography</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<!-- 앱 화면은 이 맥 안(127.0.0.1)의 엔진에서만 불러와요 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- 엔진을 깔끔하게 끄고(가져오던 위치를 저장하고) 나서 종료해야 해서, 시스템이 말없이 앱을 끄지 않게 해요 -->
+	<key>NSSupportsAutomaticTermination</key>
+	<false/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<!-- macOS 가 연결된 iPhone 의 사진에 다가가도 되는지 물을 때 보여 줄 문구 -->
+	<key>NSCameraUsageDescription</key>
+	<string>케이블로 연결한 iPhone의 사진과 동영상을 맥으로 옮기려면 필요해요.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>iPhone 사진을 맥으로 옮기려면 필요해요.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>made by. Nevertheless_D</string>
+</dict>
+</plist>
