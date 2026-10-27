@@ -82,6 +82,11 @@ N=$(api /api/items | pyget "d['counts']['all']")
 check "I1 가짜 iPhone 사진 30개 묶음 (읽은 수 ${N:-?})" test "${N:-0}" = "30"
 sleep 3
 screencapture -x "$OUT/shot-main.png"
+AID=$(api /api/items | pyget "[a['id'] for a in d['assets'] if a['k']=='l'][0]")
+curl -fs -m 20 -H "x-token: $(tok)" "http://127.0.0.1:$(port)/api/view?id=$AID&p=photo" -o "$OUT/peek-photo.bin"
+check "I1b 길게 눌러 미리보기: 옮기기 전 사진 원본 ($(wc -c < "$OUT/peek-photo.bin" 2>/dev/null | tr -d ' ')B)" bash -c "[ \$(wc -c < '$OUT/peek-photo.bin') -gt 1000 ]"
+for _ in $(seq 1 20); do api "/api/view/status?id=$AID&p=motion" | grep -q '"ready":true' && break; sleep 0.5; done
+check "I1c 길게 눌러 미리보기: Live 영상 받아 둠" bash -c "curl -fs -H 'x-token: $(tok)' 'http://127.0.0.1:$(port)/api/view/status?id=$AID&p=motion' | grep -q '\"ready\":true'"
 echo 150000 > "$PHONE/.rate"
 post /api/import '{"all":true,"askDelete":true}' > /dev/null
 sleep 4
