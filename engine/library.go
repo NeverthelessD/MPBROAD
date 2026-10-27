@@ -245,6 +245,24 @@ func (l *Library) File(id string) (*FileRef, bool) {
 	return f, ok
 }
 
+// FileLoose: id 로 못 찾을 때 이름 · 크기가 같은 파일이 하나뿐이면 그것으로 봐요
+// (다시 연결했을 때 iPhone 이 찍은 날짜를 다르게 알려 줘도 이어서 할 수 있게)
+func (l *Library) FileLoose(name string, size int64) (*FileRef, bool) {
+	l.ensure()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var found *FileRef
+	for _, f := range l.files {
+		if f.Name == name && f.Size == size {
+			if found != nil {
+				return nil, false
+			}
+			found = f
+		}
+	}
+	return found, found != nil
+}
+
 func (l *Library) Assets() []*Asset {
 	l.ensure()
 	l.mu.Lock()

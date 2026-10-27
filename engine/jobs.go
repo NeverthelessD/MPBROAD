@@ -574,6 +574,9 @@ func (j *Jobs) processFile(ctx context.Context, spec *JobSpec, f *JobFile, sibli
 		}
 		ref, ok := j.lib.File(f.ID)
 		if !ok {
+			ref, ok = j.lib.FileLoose(f.Name, f.Size)
+		}
+		if !ok {
 			if j.dev.State() == "ready" {
 				return fileDone{St: "fail", Err: "iPhone에서 찾을 수 없어요 (지워졌을 수 있어요)"}, nil
 			}

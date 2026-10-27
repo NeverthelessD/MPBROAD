@@ -360,3 +360,83 @@ func TestRedoAfterDeletedOnMac(t *testing.T) {
 		t.Fatalf("다시 옮긴 뒤에도 '맥에 없음': %v", c)
 	}
 }
+
+func TestPauseUnplugReplugResume(t *testing.T) {
+	e := setupApp(t)
+	d := time.Date(2026, 9, 1, 9, 0, 0, 0, time.Local)
+	e.put(t, "IMG_0600.JPG", 1000, d)
+	big := e.put(t, "IMG_0601.MOV", 3_000_000, d.Add(time.Minute))
+	e.put(t, "IMG_0602.JPG", 1000, d.Add(2*time.Minute))
+	phone := filepath.Join(filepath.Dir(e.root), "..")
+	os.WriteFile(filepath.Join(phone, ".rate"), []byte("2000000"), 0o644)
+	e.rescan()
+	if _, err := app.jobs.Create(app.lib.Assets(), app.Settings(), false, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "큰 파일 받는 중", 5*time.Second, func() bool {
+		c, _ := app.jobs.State()["cur"].(map[string]any)
+		return c != nil && c["name"] == "IMG_0601.MOV" && c["done"].(int64) > 300_000
+	})
+	// 1) 잠시 멈춤
+	app.jobs.Pause()
+	if stage() != "paused" {
+		t.Fatalf("잠시 멈춤이 안 돼요: %v", stage())
+	}
+	got := app.jobs.State()["partial"].(map[string]any)["got"].(int64)
+	// 2) 케이블 빼기 → 3) 다시 연결
+	os.Rename(phone, phone+".off")
+	e.rescan()
+	time.Sleep(800 * time.Millisecond)
+	if stage() != "paused" {
+		t.Fatalf("케이블을 빼도 멈춘 상태여야 해요: %v", stage())
+	}
+	os.Rename(phone+".off", phone)
+	os.Remove(filepath.Join(phone, ".rate"))
+	e.rescan()
+	// 4) 이어서 하기
+	if err := app.jobs.Resume(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "이어서 끝", 10*time.Second, func() bool { return stage() == "done" })
+	st := app.jobs.State()
+	if st["ok"].(int) != 3 || st["failed"].(int) != 0 {
+		t.Fatalf("결과가 이상해요: %v", st)
+	}
+	b, _ := os.ReadFile(filepath.Join(e.dest, "2026/09/01/IMG_0601.MOV"))
+	if !bytes.Equal(b, big) {
+		t.Fatal("이어 받은 파일이 원본과 달라요")
+	}
+	t.Logf("멈춘 곳 %d 바이트부터 이어 받음", got)
+}
+
+// 다시 연결했을 때 iPhone 이 찍은 날짜를 조금 다르게 알려 줘도(같은 이름 · 같은 크기) 이어서 해요
+func TestResumeWhenDateReportedDifferently(t *testing.T) {
+	e := setupApp(t)
+	d := time.Date(2026, 9, 2, 9, 0, 0, 0, time.Local)
+	big := e.put(t, "IMG_0700.MOV", 2_000_000, d)
+	phone := filepath.Join(filepath.Dir(e.root), "..")
+	os.WriteFile(filepath.Join(phone, ".rate"), []byte("2000000"), 0o644)
+	e.rescan()
+	if _, err := app.jobs.Create(app.lib.Assets(), app.Settings(), false, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "받는 중", 5*time.Second, func() bool {
+		c, _ := app.jobs.State()["cur"].(map[string]any)
+		return c != nil && c["done"].(int64) > 200_000
+	})
+	app.jobs.Pause()
+	os.Chtimes(filepath.Join(e.root, "IMG_0700.MOV"), d.Add(-3*time.Hour), d.Add(-3*time.Hour))
+	os.Remove(filepath.Join(phone, ".rate"))
+	e.rescan()
+	if err := app.jobs.Resume(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "끝", 10*time.Second, func() bool { return stage() == "done" })
+	if st := app.jobs.State(); st["ok"].(int) != 1 {
+		t.Fatalf("날짜가 달라져서 못 찾았어요: %v", st)
+	}
+	b, _ := os.ReadFile(filepath.Join(e.dest, "2026/09/02/IMG_0700.MOV"))
+	if !bytes.Equal(b, big) {
+		t.Fatal("내용이 달라요")
+	}
+}
