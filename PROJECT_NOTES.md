@@ -29,6 +29,9 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 - [ ] 문제가 나면 사용자에게 '진단 정보 보기'(device.log 포함) 내용을 받아서 고치기
 
 ### 작업 기록
+- 2026-10-27 v1.0.1 — 사용자 요청: 연도별로 통째로 골라서 한 번에 옮기기. 목록에 연도 머리(큰 연도 숫자 · 새 항목 수 · 크기 ·
+  'YYYY년 모두 선택' ↔ '선택 풀기', 일부만 골랐으면 (n/전체)), 달 머리에 '이 달 모두', 오른쪽 막대의 연도도 눌러서 그 해로 이동.
+  app.js: toggleGroup · syncGroupButtons · pickable. ui-test.py 에 연도 선택 시험 추가(23개 통과).
 - 2026-10-27 v1.0.0 제작: 엔진(Go) · iPhone 도우미(Swift, ImageCaptureCore) · 화면 · 껍데기 · 아이콘 · 가이드 · 빌드 서버.
   리눅스: go test(가져오기 · 정리 · Live 이름 · 잠김/케이블 빠짐 → 이어 받기 · 앱 꺼짐 → 이어서 · 지우기) + scripts/ui-test.py(18개 통과).
   맥 빌드 서버 1차: iPhone 도우미의 requestContentsAuthorization/requestControlAuthorization 은 macOS 에서 쓸 수 없음(iOS 전용) → 뺌.

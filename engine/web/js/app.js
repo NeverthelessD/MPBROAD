@@ -186,9 +186,9 @@ function renderMainShell() {
     syncSel();
   });
   $('#rail').addEventListener('click', e => {
-    const b = e.target.closest('button[data-m]');
+    const b = e.target.closest('button[data-m], button[data-y]');
     if (!b) return;
-    const sec = sc.querySelector(`[data-month="${b.dataset.m}"]`);
+    const sec = b.dataset.y ? sc.querySelector(`.yearhd[data-year="${b.dataset.y}"]`) : sc.querySelector(`[data-month="${b.dataset.m}"]`);
     if (sec) sc.scrollTo({ top: sec.offsetTop - sc.offsetTop, behavior: 'smooth' });
   });
   $('#actbar').addEventListener('click', onBarClick);
@@ -262,13 +262,28 @@ function renderList() {
     buf = []; cnt = 0; newCnt = 0;
   };
   const months = [];
+  const years = {};
+  for (const a of list) {
+    const y = new Date(a.d * 1000).getFullYear();
+    const yr = years[y] || (years[y] = { n: 0, s: 0, all: 0 });
+    yr.all++;
+    if (pickable(a)) { yr.n++; yr.s += a.s; }
+  }
+  let curYear = null;
   for (const a of list) {
     const d = new Date(a.d * 1000);
     const dk = dayKey(d), mk = dk.slice(0, 7);
     if (dk !== curDay) {
       flush();
+      if (d.getFullYear() !== curYear) {
+        curYear = d.getFullYear();
+        const yr = years[curYear];
+        const what = S.tab === 'done' ? `${N(yr.n)}개 · ${bytes(yr.s)}` : yr.n ? `새 항목 ${N(yr.n)}개 · ${bytes(yr.s)}` : `${N(yr.all)}개 · 모두 옮김`;
+        out.push(`<div class="yearhd" data-year="${curYear}"><span class="yy">${curYear}</span><span class="yc">${what}</span>` +
+          (yr.n ? `<button type="button" class="ysel" data-year="${curYear}">${curYear}년 모두 선택</button>` : '') + `</div>`);
+      }
       if (mk !== curMonth) {
-        out.push(`<div class="month">${d.getFullYear()}년 ${d.getMonth() + 1}월</div>`);
+        out.push(`<div class="month" data-m="${mk}"><span>${d.getMonth() + 1}월</span><button type="button" data-month="${mk}">이 달 모두</button></div>`);
         months.push(mk);
       }
       curDay = dk; curMonth = mk; d0 = d;
@@ -278,11 +293,12 @@ function renderList() {
   flush();
   sc.innerHTML = out.join('');
   sc.scrollTop = top;
+  syncGroupButtons();
   // 연 · 월 이동 막대
   let rail = '', y = '';
   for (const m of months) {
     const [yy, mm] = m.split('-');
-    if (yy !== y) { rail += `<span class="y">${yy}</span>`; y = yy; }
+    if (yy !== y) { rail += `<button type="button" class="y" data-y="${yy}" title="${yy}년으로 가기">${yy}</button>`; y = yy; }
     rail += `<button type="button" data-m="${m}">${Number(mm)}월</button>`;
   }
   $('#rail').innerHTML = rail;
@@ -344,22 +360,56 @@ function renderBar() {
   }
 }
 
+// 고를 수 있는 항목: '이미 옮김' 탭에서는 모두, 그 밖에서는 아직 옮기지 않은 것
+function pickable(a) { return S.tab === 'done' || !a.done; }
+
+function yearOf(a) { return String(new Date(a.d * 1000).getFullYear()); }
+function monthOf(a) { return dayKey(new Date(a.d * 1000)).slice(0, 7); }
+
+// 묶음(연 · 달 · 날)을 한꺼번에 고르거나 풀어요
+function toggleGroup(match) {
+  const pick = visible().filter(a => pickable(a) && match(a));
+  const all = pick.length && pick.every(a => S.sel.has(a.id));
+  pick.forEach(a => all ? S.sel.delete(a.id) : S.sel.add(a.id));
+  syncSel();
+  return !all;
+}
+
+function syncGroupButtons() {
+  const v = visible().filter(pickable);
+  const byYear = {};
+  for (const a of v) {
+    const y = yearOf(a);
+    const g = byYear[y] || (byYear[y] = { n: 0, sel: 0 });
+    g.n++; if (S.sel.has(a.id)) g.sel++;
+  }
+  $$('#scroller .ysel').forEach(b => {
+    const g = byYear[b.dataset.year] || { n: 0, sel: 0 };
+    const on = g.n > 0 && g.sel === g.n;
+    b.classList.toggle('on', on);
+    b.textContent = on ? `${b.dataset.year}년 선택 풀기` : g.sel ? `${b.dataset.year}년 모두 선택 (${N(g.sel)}/${N(g.n)})` : `${b.dataset.year}년 모두 선택`;
+  });
+}
+
 function syncSel() {
   $$('#scroller .tile').forEach(t => { const on = S.sel.has(t.dataset.id); t.classList.toggle('sel', on); t.setAttribute('aria-pressed', String(on)); });
   $$('#scroller input[data-id]').forEach(i => { i.checked = S.sel.has(i.dataset.id); });
+  syncGroupButtons();
   renderBar();
 }
 
 function onListClick(e) {
-  const dayBtn = e.target.closest('button[data-day]');
-  if (dayBtn) {
-    const day = dayBtn.dataset.day;
-    const pick = visible().filter(a => dayKey(new Date(a.d * 1000)) === day && (S.tab === 'done' || !a.done));
-    const all = pick.length && pick.every(a => S.sel.has(a.id));
-    pick.forEach(a => all ? S.sel.delete(a.id) : S.sel.add(a.id));
-    syncSel();
+  const yBtn = e.target.closest('button[data-year]');
+  if (yBtn) {
+    const y = yBtn.dataset.year;
+    const on = toggleGroup(a => yearOf(a) === y);
+    if (on) toast(`${y}년 사진을 모두 골랐어요. 아래 '가져오기'를 누르면 한 번에 옮겨요`);
     return;
   }
+  const mBtn = e.target.closest('button[data-month]');
+  if (mBtn) { toggleGroup(a => monthOf(a) === mBtn.dataset.month); return; }
+  const dayBtn = e.target.closest('button[data-day]');
+  if (dayBtn) { toggleGroup(a => dayKey(new Date(a.d * 1000)) === dayBtn.dataset.day); return; }
   const t = e.target.closest('.tile');
   if (!t) return;
   const id = t.dataset.id;
