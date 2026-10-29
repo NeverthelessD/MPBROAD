@@ -11,6 +11,7 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 
 ## 진행 사항
 
+- **2026-10-29 내려받기용 zip (사용자 요청)**: 저장소 `download/` 폴더에 `MyPhotoBook_ROAD.zip`(앱 + 사용 가이드)를 올리고, README 맨 위 '앱 받기' 링크(`raw/main/download/MyPhotoBook_ROAD.zip`)로 바로 받게 했어요. 예전 버전 zip 은 지웠어요 (저장소 `releases/` 에도 업데이트용 최신판만).
 작업이 중간에 끊기면 아래 체크리스트에서 **처음으로 체크 안 된 항목부터** 이어서 하면 돼요. 단계마다 커밋 · 푸시.
 
 - [x] 0. 디자인 시안 → 사용자 확정 (2026-10-27, Design 캔버스 'MyPhotoBook_ROAD 디자인 시안', 방향 B 라이트박스)
@@ -57,6 +58,7 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 
 ## 결정 사항
 
+- **GitHub 에는 늘 최신판 zip 1개만**: 업데이트를 내보낼 때마다 `scripts/publish-download.sh` 가 앱 + 가이드 zip 을 `download/` 에 정해진 이름으로 바꿔 넣고 다른 파일은 지워요(release.sh 가 자동으로 불러요. GitHub 릴리스 페이지는 이 작업 환경에서 만들 수 없어 저장소 폴더를 써요). `releases/` 의 업데이트용 zip 도 현재 버전만 남겨요 — 설치된 앱은 latest.json 이 가리키는 zip 만 받고, '되돌리기'는 맥 안의 백업을 써서 예전 zip 이 필요 없어요.
 - 이름: 앱 `MyPhotoBook_ROAD.app` (실행 파일 MyPhotoBook_ROAD), 엔진 `mpbroad-engine`, iPhone 도우미 `mpbroad-device`,
   번들 id `com.nevertheless-d.myphotobook-road`, 데이터 폴더 `~/Library/Application Support/MyPhotoBook_ROAD`, 환경 변수 접두사 `MPB_`,
   주소 127.0.0.1:47931 (MSROAD 47917 과 겹치지 않게).
