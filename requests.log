@@ -1,0 +1,51 @@
+11-02 07:53:55 [3711] GET  /api/ping              200     0ms 
+11-02 07:53:55 [3711] GET  /api/ping              200     0ms 
+11-02 07:53:55 [3711] GET  /api/ping              200     0ms 
+11-02 07:53:57 [3711] 화면 열림 · Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) MPBROADShell/1.1.3
+11-02 07:53:57 [3711] GET  /                      200     0ms 
+11-02 07:53:57 [3711] GET  /css/app.css           200     3ms 
+11-02 07:53:57 [3711] GET  /js/app.js             200     0ms 
+11-02 07:53:57 [3711] GET  /api/settings          200     0ms 
+11-02 07:54:12 [3997] GET  /api/ping              200     0ms 
+11-02 07:54:12 [3997] POST /api/quit              200     0ms 
+11-02 07:54:15 [4275] GET  /api/ping              200     0ms 
+11-02 07:54:16 [4275] 화면 열림 · Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) MPBROADShell/1.1.3
+11-02 07:54:16 [4275] GET  /                      200     0ms 
+11-02 07:54:16 [4275] GET  /css/app.css           200     1ms 
+11-02 07:54:16 [4275] GET  /js/app.js             200     0ms 
+11-02 07:54:16 [4275] GET  /api/settings          200     0ms 
+11-02 07:54:17 [4275] GET  /api/thumb             404     0ms 
+11-02 07:54:17 [4275] GET  /api/thumb             404    91ms 
+11-02 07:54:17 [4275] GET  /api/thumb             404     8ms 
+11-02 07:54:18 [4275] GET  /api/thumb             404     0ms 
+11-02 07:54:21 [4275] GET  /api/view              200     3ms 
+11-02 07:54:22 [4275] POST /api/import            200    13ms 
+11-02 07:54:23 [4275] GET  /api/thumb             404   151ms 
+11-02 07:54:24 [4275] GET  /api/thumb             404   151ms 
+11-02 07:54:25 [4275] GET  /api/thumb             404   151ms 
+11-02 07:54:26 [4275] GET  /api/thumb             404   153ms 
+11-02 07:54:26 [4275] GET  /api/thumb             404     0ms 
+11-02 07:54:30 [4706] GET  /api/ping              200     0ms 
+11-02 07:54:31 [4706] 화면 열림 · Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) MPBROADShell/1.1.3
+11-02 07:54:31 [4706] GET  /                      200     0ms 
+11-02 07:54:31 [4706] GET  /css/app.css           200     1ms 
+11-02 07:54:31 [4706] GET  /js/app.js             200     0ms 
+11-02 07:54:32 [4706] GET  /api/settings          200     0ms 
+11-02 07:54:35 [4706] POST /api/job/resume        200    46ms 
+11-02 07:54:35 [4706] GET  /api/thumb             404     1ms 
+11-02 07:54:35 [4706] GET  /api/thumb             404     0ms 
+11-02 07:54:35 [4706] GET  /api/thumb             404     0ms 
+11-02 07:54:37 [4706] POST /api/job/delete        200     0ms 
+11-02 07:54:40 [4706] POST /api/job/dismiss       200     0ms 
+11-02 07:54:40 [4706] POST /api/quit              200     0ms 
+11-02 07:54:41 [5027] GET  /api/ping              200     0ms 
+11-02 07:54:41 [5027] POST /api/quit              200     0ms 
+11-02 07:54:42 [5065] GET  /api/ping              200     0ms 
+11-02 07:54:42 [5065] POST /api/update/restart    200     0ms 
+11-02 07:54:44 [5118] 화면 열림 · Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) MPBROADShell/1.1.3
+11-02 07:54:44 [5118] GET  /                      200     0ms 
+11-02 07:54:44 [5118] GET  /css/app.css           200     0ms 
+11-02 07:54:44 [5118] GET  /js/app.js             200     0ms 
+11-02 07:54:44 [5118] GET  /api/settings          200     0ms 
+11-02 07:54:45 [5118] GET  /api/ping              200     0ms 
+11-02 07:54:46 [5118] POST /api/quit              200     0ms 
