@@ -58,10 +58,14 @@ type Library struct {
 	dev     Device
 	journal *Journal
 
-	rev   atomic.Int64
-	mu    sync.Mutex
-	built int64
-	keep  bool
+	rev       atomic.Int64 // 화면이 보는 번호: 무엇이든 바뀌면 올라가요
+	devRev    atomic.Int64 // iPhone 목록이 바뀌면 올라가요 (묶음 구조를 다시 만들어요)
+	mu        sync.Mutex
+	builtDev  int64 // 묶음 구조를 만든 devRev
+	builtDone int64 // '이미 옮김' 표시를 계산한 rev
+	built     int64 // 화면에 보낸 rev (= builtDone)
+	keep      bool
+	stat      map[string]statEnt // 맥 파일 크기 확인 결과 (잠깐 기억해서 같은 파일을 계속 묻지 않아요)
 
 	assets  []*Asset
 	byID    map[string]*Asset
@@ -70,28 +74,98 @@ type Library struct {
 }
 
 func NewLibrary(dev Device, j *Journal) *Library {
-	l := &Library{dev: dev, journal: j, built: -1}
+	l := &Library{dev: dev, journal: j, built: -1, builtDev: -1, builtDone: -1, stat: map[string]statEnt{}}
 	l.rev.Store(1)
+	l.devRev.Store(1)
 	return l
 }
 
+type statEnt struct {
+	size int64 // -1 = 없음
+	at   time.Time
+}
+
+const statTTL = 15 * time.Second
+
+// Changed: 옮김 기록이 바뀜 → '이미 옮김' 표시만 다시 계산 (화면이 목록을 받을 때)
 func (l *Library) Changed() { l.rev.Add(1) }
+
+// DeviceChanged: iPhone 목록이 바뀜 → 묶음 구조부터 다시
+func (l *Library) DeviceChanged() { l.devRev.Add(1); l.rev.Add(1) }
+
+// Invalidate: 설정이 바뀜(저장 위치 등) → 맥 파일 확인도 처음부터
+func (l *Library) Invalidate() {
+	l.mu.Lock()
+	l.stat = map[string]statEnt{}
+	l.mu.Unlock()
+	l.Changed()
+}
+
+// NoteFile: 가져오기가 방금 이 자리에 이 크기로 저장했어요 (다시 확인하지 않아도 돼요)
+func (l *Library) NoteFile(path string, size int64) {
+	l.mu.Lock()
+	l.stat[path] = statEnt{size, time.Now()}
+	l.mu.Unlock()
+}
+
 func (l *Library) Rev() int64 { return l.rev.Load() }
 
-// ensure rebuilds the asset list when something changed (device, journal, settings).
+// sizeOnMac: 맥 파일 크기 (-1 = 없음). l.mu 를 잡은 채로 불러요.
+func (l *Library) sizeOnMac(p string) int64 {
+	if e, ok := l.stat[p]; ok && time.Since(e.at) < statTTL {
+		return e.size
+	}
+	sz := int64(-1)
+	if st, err := os.Stat(p); err == nil {
+		sz = st.Size()
+	}
+	l.stat[p] = statEnt{sz, time.Now()}
+	return sz
+}
+
+// ensureFiles: iPhone 목록이 바뀌었을 때만 묶음 구조를 다시 만들어요 (가져오는 중 파일마다 부르는 곳은 이것만)
+func (l *Library) ensureFiles() {
+	dev := l.devRev.Load()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.builtDev != dev {
+		l.build()
+		l.builtDev, l.builtDone = dev, -1
+	}
+}
+
+// ensure: 묶음 구조 + '이미 옮김' 표시까지 (화면 목록 · 작업 만들기)
 func (l *Library) ensure() {
+	l.ensureFiles()
 	rev := l.rev.Load()
 	s := app.Settings()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.built == rev && l.keep == s.KeepLive {
+	if l.builtDone == rev && l.keep == s.KeepLive {
 		return
 	}
-	l.build(s)
-	l.built, l.keep = rev, s.KeepLive
+	dest := app.Dest()
+	if len(l.stat) > 200_000 {
+		l.stat = map[string]statEnt{}
+	}
+	// 화면이 앞의 목록을 아직 보내는 중일 수 있어서, 고친 사본을 새로 만들어요
+	assets := make([]*Asset, len(l.assets))
+	byID := make(map[string]*Asset, len(l.assets))
+	fileAst := make(map[string]*Asset, len(l.fileAst))
+	for i, a := range l.assets {
+		c := *a
+		c.Done, c.OnMac = l.doneState(&c, dest, s.KeepLive)
+		assets[i] = &c
+		byID[c.ID] = &c
+		for _, f := range c.Files {
+			fileAst[f.ID] = &c
+		}
+	}
+	l.assets, l.byID, l.fileAst = assets, byID, fileAst
+	l.builtDone, l.built, l.keep = rev, rev, s.KeepLive
 }
 
-func (l *Library) build(s Settings) {
+func (l *Library) build() {
 	items := l.dev.Items()
 	groups := map[string][]*FileRef{}
 	files := map[string]*FileRef{}
@@ -107,7 +181,6 @@ func (l *Library) build(s Settings) {
 		key := it.Folder + "/" + stem
 		groups[key] = append(groups[key], f)
 	}
-	dest := app.Dest()
 	assets := make([]*Asset, 0, len(groups))
 	byID := map[string]*Asset{}
 	fileAst := map[string]*Asset{}
@@ -130,7 +203,6 @@ func (l *Library) build(s Settings) {
 		if kind == "l" {
 			a.Dur = 0
 		}
-		a.Done, a.OnMac = l.doneState(a, dest, s.KeepLive)
 		assets = append(assets, a)
 		byID[a.ID] = a
 	}
@@ -188,13 +260,13 @@ func (l *Library) doneState(a *Asset, dest string, keepLive bool) (done, onMac b
 	done, onMac = true, true
 	for _, f := range required(a, keepLive) {
 		if r, ok := l.journal.Get(f.ID); ok {
-			if !fileExists(r.Dest) {
+			if l.sizeOnMac(r.Dest) < 0 {
 				onMac = false
 			}
 			continue
 		}
 		p := filepath.Join(dest, dateDir(a.D), f.Name)
-		if st, err := os.Stat(p); err == nil && st.Size() == f.Size {
+		if l.sizeOnMac(p) == f.Size {
 			continue
 		}
 		done, onMac = false, false
@@ -238,7 +310,7 @@ func (l *Library) Asset(id string) (*Asset, bool) {
 
 // File: 지금 연결된 iPhone 에서 이 id 의 파일 (손잡이는 연결이 바뀌면 달라져요)
 func (l *Library) File(id string) (*FileRef, bool) {
-	l.ensure()
+	l.ensureFiles()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	f, ok := l.files[id]
@@ -248,7 +320,7 @@ func (l *Library) File(id string) (*FileRef, bool) {
 // FileLoose: id 로 못 찾을 때 이름 · 크기가 같은 파일이 하나뿐이면 그것으로 봐요
 // (다시 연결했을 때 iPhone 이 찍은 날짜를 다르게 알려 줘도 이어서 할 수 있게)
 func (l *Library) FileLoose(name string, size int64) (*FileRef, bool) {
-	l.ensure()
+	l.ensureFiles()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	var found *FileRef

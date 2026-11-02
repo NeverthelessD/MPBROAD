@@ -27,6 +27,8 @@ type Journal struct {
 	path string
 	mu   sync.Mutex
 	recs map[string]Record
+	f    *os.File
+	sync time.Time
 }
 
 func OpenJournal(support string) *Journal {
@@ -58,22 +60,40 @@ func (j *Journal) Count() int {
 	return len(j.recs)
 }
 
+// append: 바로 써요(앱이 갑자기 꺼져도 남아요). 디스크 동기화는 2초에 한 번 · 지우기 전 · 작업이 끝날 때만 (Flush).
 func (j *Journal) append(rs ...Record) error {
-	f, err := os.OpenFile(j.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
+	if j.f == nil {
+		f, err := os.OpenFile(j.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return err
+		}
+		j.f = f
 	}
-	w := bufio.NewWriter(f)
+	var buf []byte
 	for _, r := range rs {
 		b, _ := json.Marshal(r)
-		w.Write(append(b, '\n'))
+		buf = append(append(buf, b...), '\n')
 	}
-	if err := w.Flush(); err != nil {
-		f.Close()
+	if _, err := j.f.Write(buf); err != nil {
+		j.f.Close()
+		j.f = nil
 		return err
 	}
-	f.Sync()
-	return f.Close()
+	if time.Since(j.sync) > 2*time.Second {
+		j.f.Sync()
+		j.sync = time.Now()
+	}
+	return nil
+}
+
+// Flush: 기록을 디스크까지 확실히 내려보내요
+func (j *Journal) Flush() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.f != nil {
+		j.f.Sync()
+		j.sync = time.Now()
+	}
 }
 
 func (j *Journal) Add(r Record) error {

@@ -31,7 +31,7 @@ func setupApp(t *testing.T) *testEnv {
 	app.lib = NewLibrary(e.fd, app.journal)
 	app.jobs = NewJobs(e.support, e.fd, app.lib, app.journal)
 	app.upd = NewUpdater(e.support)
-	e.fd.Start(func() { app.lib.Changed() })
+	e.fd.Start(func() { app.lib.DeviceChanged() })
 	t.Cleanup(func() {
 		e.fd.Stop()
 		app.jobs.stopRunner()
@@ -132,7 +132,7 @@ func TestImportOrganizeLiveAndSkip(t *testing.T) {
 	app.journal = OpenJournal(e.support)
 	app.lib.journal = app.journal
 	app.jobs.journal = app.journal
-	app.lib.Changed()
+	app.lib.Invalidate()
 	counts = app.lib.Snapshot(app.Settings())["counts"].(map[string]int)
 	if counts["done"] != 3 {
 		t.Fatalf("정리된 파일을 알아보지 못해요: %v", counts)
@@ -330,7 +330,7 @@ func TestRedoAfterDeletedOnMac(t *testing.T) {
 	app.jobs.Dismiss()
 	// 맥에서 실수로 하나 지움
 	os.Remove(filepath.Join(e.dest, "2026/08/01/IMG_0500.JPG"))
-	app.lib.Changed()
+	app.lib.Invalidate()
 	counts := app.lib.Snapshot(app.Settings())["counts"].(map[string]int)
 	if counts["done"] != 2 || counts["gone"] != 1 {
 		t.Fatalf("맥에서 없어진 것을 알아보지 못해요: %v", counts)
@@ -357,7 +357,7 @@ func TestRedoAfterDeletedOnMac(t *testing.T) {
 	if ents, _ := os.ReadDir(filepath.Join(e.dest, "2026/08/01")); len(ents) != 2 {
 		t.Fatalf("사본이 생겼어요: %d개", len(ents))
 	}
-	app.lib.Changed()
+	app.lib.Invalidate()
 	if c := app.lib.Snapshot(app.Settings())["counts"].(map[string]int); c["gone"] != 0 {
 		t.Fatalf("다시 옮긴 뒤에도 '맥에 없음': %v", c)
 	}

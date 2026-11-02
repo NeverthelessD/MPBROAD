@@ -86,6 +86,10 @@ type Jobs struct {
 	runBytes int64 // 이번 실행에서 받은 바이트 (남은 시간 계산)
 	result   map[string]any
 	deleting bool
+
+	logMu   sync.Mutex
+	logF    *os.File
+	logSync time.Time
 }
 
 func NewJobs(support string, dev Device, lib *Library, j *Journal) *Jobs {
@@ -159,6 +163,7 @@ func (j *Jobs) loadInterrupted() {
 }
 
 func (j *Jobs) removeFiles(spec *JobSpec) {
+	j.closeLog()
 	os.Remove(j.specPath())
 	os.Remove(j.logPath())
 	if spec != nil && spec.Dest != "" {
@@ -179,15 +184,36 @@ func (j *Jobs) pendingCount() int {
 	return n
 }
 
+// appendLog: 한 줄씩 바로 써요(앱이 갑자기 꺼져도 남아요). 디스크까지 확실히 내려보내는 건(동기화) 2초에 한 번만 —
+// 파일마다 하면 맥에서는 그것만으로 사진 한 장에 수십 ms 가 걸려요. 정전으로 마지막 몇 줄이 사라져도,
+// 이어서 할 때 정리 폴더에 같은 파일이 있으면 '건너뜀'으로 처리돼서 사본이 생기지 않아요.
 func (j *Jobs) appendLog(l logLine) {
-	f, err := os.OpenFile(j.logPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return
+	j.logMu.Lock()
+	defer j.logMu.Unlock()
+	if j.logF == nil {
+		f, err := os.OpenFile(j.logPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return
+		}
+		j.logF = f
 	}
 	b, _ := json.Marshal(l)
-	f.Write(append(b, '\n'))
-	f.Sync()
-	f.Close()
+	j.logF.Write(append(b, '\n'))
+	if l.Ev != "" || time.Since(j.logSync) > 2*time.Second {
+		j.logF.Sync()
+		j.logSync = time.Now()
+	}
+}
+
+// closeLog: 기록 파일을 마저 내려보내고 닫아요 (작업을 지우기 전 · 멈출 때)
+func (j *Jobs) closeLog() {
+	j.logMu.Lock()
+	defer j.logMu.Unlock()
+	if j.logF != nil {
+		j.logF.Sync()
+		j.logF.Close()
+		j.logF = nil
+	}
 }
 
 // ---------------------------------------------------------------- 상태
@@ -440,28 +466,32 @@ func (j *Jobs) Shutdown(why string) {
 
 func (j *Jobs) run(ctx context.Context) {
 	suffix := map[string]string{} // 묶음 id → 이름 뒤에 붙일 _n
+	j.mu.Lock()
+	spec := j.spec
+	byAsset := map[string][]JobFile{} // 같은 묶음(Live Photo 짝)의 파일들 — 한 번만 만들어 둬요
+	for _, f := range spec.Files {
+		byAsset[f.Asset] = append(byAsset[f.Asset], f)
+	}
+	j.mu.Unlock()
+	cursor := 0 // 끝난 파일은 다시 훑지 않아요 (만 장이 넘어도 처음부터 다시 찾지 않게)
+	defer j.journal.Flush()
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 		j.mu.Lock()
 		var next *JobFile
-		var siblings []JobFile
-		for i := range j.spec.Files {
-			f := &j.spec.Files[i]
+		for ; cursor < len(spec.Files); cursor++ {
+			f := &spec.Files[cursor]
 			if _, ok := j.done[f.ID]; !ok {
 				next = f
 				break
 			}
 		}
+		var siblings []JobFile
 		if next != nil {
-			for _, f := range j.spec.Files {
-				if f.Asset == next.Asset {
-					siblings = append(siblings, f)
-				}
-			}
+			siblings = byAsset[next.Asset]
 		}
-		spec := j.spec
 		j.mu.Unlock()
 		if next == nil {
 			j.finish(ctx)
@@ -599,6 +629,7 @@ func (j *Jobs) processFile(ctx context.Context, spec *JobSpec, f *JobFile, sibli
 		if st, err := os.Stat(target); err == nil {
 			if st.Size() == f.Size {
 				// 이미 같은 파일이 있어요 → 다시 옮기지 않아요
+				app.lib.NoteFile(target, f.Size)
 				j.journal.Add(Record{ID: f.ID, Name: f.Name, Size: f.Size, Created: f.Created, Dest: target})
 				return fileDone{St: "skip", Dest: target}, nil
 			}
@@ -684,6 +715,7 @@ func (j *Jobs) processFile(ctx context.Context, spec *JobSpec, f *JobFile, sibli
 		}
 		t := time.Unix(f.Created, 0)
 		os.Chtimes(target, t, t)
+		app.lib.NoteFile(target, f.Size)
 		if err := j.journal.Add(Record{ID: f.ID, Name: f.Name, Size: f.Size, Created: f.Created, Dest: target, Sha: got}); err != nil {
 			log.Printf("기록 실패: %v", err)
 		}
@@ -860,7 +892,7 @@ func (j *Jobs) deleteMode(ctx context.Context, assetIDs []string, onlyOnMac bool
 		}
 		return 0, len(assetIDs), errors.New("iPhone이 연결되어 있지 않아서 지우지 못했어요")
 	}
-	var hs []string
+	var hs, onMac []string
 	hToID := map[string]string{}
 	assetOf := map[string]string{}
 	want := map[string]int{}
@@ -878,6 +910,7 @@ func (j *Jobs) deleteMode(ctx context.Context, assetIDs []string, onlyOnMac bool
 				if st, err := os.Stat(r.Dest); err != nil || st.Size() != f.Size {
 					continue
 				}
+				onMac = append(onMac, r.Dest)
 			}
 			hs = append(hs, f.H)
 			hToID[f.H] = f.ID
@@ -888,6 +921,11 @@ func (j *Jobs) deleteMode(ctx context.Context, assetIDs []string, onlyOnMac bool
 	if len(hs) == 0 {
 		return 0, len(assetIDs), nil
 	}
+	// 지우기 전에, 맥에 옮긴 사진이 디스크에 확실히 내려가 있게 해요 (옮기는 동안에는 한 장마다 하지 않아서 빨라요)
+	if err := makeDurable(onMac); err != nil {
+		return 0, len(assetIDs), fmt.Errorf("맥에 저장된 사진을 확인하지 못해서 지우지 않았어요: %v", err)
+	}
+	j.journal.Flush()
 	var deletedIDs []string
 	gotAsset := map[string]int{}
 	var lastErr error

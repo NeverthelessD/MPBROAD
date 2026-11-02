@@ -114,7 +114,7 @@ func main() {
 	app.view = NewViewer(support, app.dev)
 	app.jobs = NewJobs(support, app.dev, app.lib, app.journal)
 	app.upd = NewUpdater(support)
-	app.dev.Start(func() { app.lib.Changed() })
+	app.dev.Start(func() { app.lib.DeviceChanged() })
 
 	go heartbeat(support)
 	ln := listen(env("PORT"), env("PORT_WAIT") == "1")
@@ -566,7 +566,7 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		a.saveSettings()
 		a.mu.Unlock()
-		a.lib.Changed()
+		a.lib.Invalidate()
 	}
 	writeJSON(w, a.settingsJSON())
 }

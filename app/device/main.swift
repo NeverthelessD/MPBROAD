@@ -390,7 +390,8 @@ final class Helper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
         let chunk: Int64 = 4 << 20
 
         func finish(ok: Bool, code: String = "", err: String = "") {
-            try? fh.synchronize()
+            // 파일마다 디스크 동기화는 하지 않아요 (맥이 알아서 내려보내는 동안 다음 파일을 받아요).
+            // iPhone 에서 지우기 전에 엔진이 한꺼번에 확실히 내려보내요 (engine/durable.go).
             try? fh.close()
             cancelled.remove(id)
             if ok {

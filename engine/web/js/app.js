@@ -252,6 +252,8 @@ function renderList() {
   const list = visible();
   const key = [S.tab, S.kind, S.preview, S.itemsRev, list.length].join('|');
   if (key === S.listKey) { renderBar(); return; }
+  // 가져오는 동안에는 진행 창이 목록을 가리고 있어서, 사진 격자를 매번 다시 그리지 않아요 (끝나면 한 번에)
+  if (jobBusy() && S.listKey && S.listKey.split('|').slice(0, 3).join('|') === key.split('|').slice(0, 3).join('|')) { renderBar(); return; }
   S.listKey = key;
   const sc = $('#scroller');
   const top = sc.scrollTop;
@@ -266,12 +268,13 @@ function renderList() {
     renderBar();
     return;
   }
-  const out = [];
+  const out = [], weight = [];
   let curDay = null, curMonth = null, buf = [], cnt = 0, newCnt = 0, d0 = null;
   const flush = () => {
     if (!buf.length) return;
     const wd = WD[d0.getDay()];
     const cLabel = S.tab === 'new' ? `${N(newCnt)}개 새 항목` : S.tab === 'done' ? `${N(cnt)}개` : newCnt ? `${N(newCnt)}개 새 항목` : `${N(cnt)}개 · 모두 옮김`;
+    weight.push(buf.length);
     out.push(`<section class="sec" data-day="${curDay}" data-month="${curMonth}"><div class="date"><span class="d">${d0.getDate()}</span>` +
       `<span class="s">${d0.getMonth() + 1}월 · ${wd}</span><span class="c">${cLabel}</span><button type="button" data-day="${curDay}">이 날 모두</button></div>` +
       (S.preview ? `<div class="grid">${buf.map(tileHTML).join('')}</div>`
@@ -297,10 +300,12 @@ function renderList() {
         curYear = d.getFullYear();
         const yr = years[curYear];
         const what = S.tab === 'done' ? `${N(yr.n)}개 · ${bytes(yr.s)}` : yr.n ? `새 항목 ${N(yr.n)}개 · ${bytes(yr.s)}` : `${N(yr.all)}개 · 모두 옮김`;
+        weight.push(1);
         out.push(`<div class="yearhd" data-year="${curYear}"><span class="yy">${curYear}</span><span class="yc">${what}</span>` +
           (yr.n ? `<button type="button" class="ysel" data-year="${curYear}">${curYear}년 모두 선택</button>` : '') + `</div>`);
       }
       if (mk !== curMonth) {
+        weight.push(1);
         out.push(`<div class="month" data-m="${mk}"><span>${d.getMonth() + 1}월</span><button type="button" data-month="${mk}">이 달 모두</button></div>`);
         months.push(mk);
       }
@@ -309,9 +314,22 @@ function renderList() {
     buf.push(a); cnt++; if (!a.done) newCnt++;
   }
   flush();
-  sc.innerHTML = out.join('');
+  // 사진이 많으면 첫 화면만큼 먼저 그리고, 나머지는 이어서 조금씩 붙여요 (앱을 열자마자 보이게)
+  const gen = S.renderGen = (S.renderGen || 0) + 1;
+  let k = 0, w = 0;
+  const firstLimit = top > 0 ? Infinity : 360;
+  while (k < out.length && w < firstLimit) { w += weight[k]; k++; }
+  sc.innerHTML = out.slice(0, k).join('');
   sc.scrollTop = top;
   syncGroupButtons();
+  const more = () => {
+    if (gen !== S.renderGen || k >= out.length) return;
+    let n = 0; const start = k;
+    while (k < out.length && n < 1500) { n += weight[k]; k++; }
+    sc.insertAdjacentHTML('beforeend', out.slice(start, k).join(''));
+    if (k < out.length) requestAnimationFrame(more); else { syncGroupButtons(); spyRail(); }
+  };
+  if (k < out.length) requestAnimationFrame(more);
   // 연 · 월 이동 막대
   let rail = '', y = '';
   for (const m of months) {
@@ -1094,6 +1112,11 @@ async function loadItems() {
   } catch (err) { /* 다음에 다시 */ } finally { S.loadingItems = false; }
 }
 
+function jobBusy() {
+  const st = S.poll && S.poll.job && S.poll.job.stage;
+  return !!st && st !== 'done';
+}
+
 function render() {
   renderTop();
   const d = (S.poll && S.poll.device) || {};
@@ -1111,7 +1134,8 @@ async function poll(now) {
     closeLayer('lost');
     if (S.poll.rev !== S.rev) {
       S.rev = S.poll.rev;
-      const wait = Math.max(0, 1200 - (Date.now() - lastItemsLoad));
+      // 가져오는 동안에는 목록을 5초에 한 번만 새로 받아요 (숫자만 바뀌어서)
+      const wait = Math.max(0, (jobBusy() ? 5000 : 1200) - (Date.now() - lastItemsLoad));
       clearTimeout(itemsTimer);
       itemsTimer = setTimeout(loadItems, now ? 0 : wait);
     }
