@@ -544,7 +544,7 @@ function holdEnd() {
     // 손을 떼면 닫고, 이번 누르기는 '고르기'로 치지 않아요
     S.suppressClick = true;
     setTimeout(() => { S.suppressClick = false; }, 350);
-    closePeek();
+    if (!(S.peek && S.peek.pinned)) closePeek();
   }
   holdCancel();
 }
@@ -560,25 +560,29 @@ function holdCancel() {
 window.addEventListener('pointerup', holdEnd);
 window.addEventListener('pointercancel', holdEnd);
 window.addEventListener('blur', () => { holdCancel(); closePeek(); });
-document.addEventListener('keyup', e => { if ((e.key === ' ' || e.code === 'Space') && S.peek) closePeek(); });
+document.addEventListener('keyup', e => { if ((e.key === ' ' || e.code === 'Space') && S.peek && !S.peek.pinned) closePeek(); });
 
 function fmtWhen(sec) {
   const d = new Date(sec * 1000), h = d.getHours();
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]}) ${h < 12 ? '오전' : '오후'} ${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function openPeek(id) {
+function openPeek(id, pinned) {
   const a = S.items.find(x => x.id === id);
   if (!a) return;
-  closePeek();
-  S.peek = { id };
+  stopPeekMedia();
+  S.peek = { id, pinned: !!pinned };
   let el = $('#peek');
   if (!el) {
     el = document.createElement('div');
     el.id = 'peek';
     el.className = 'peek';
+    // 넘겨 보는 중에는 아무 곳이나 누르면 닫혀요 (아래 사진이 눌리지 않게 막아요)
+    el.addEventListener('pointerdown', e => { if (S.peek && S.peek.pinned) { e.preventDefault(); e.stopPropagation(); closePeek(); } });
     document.body.appendChild(el);
   }
+  el.classList.toggle('pinned', !!pinned);
+  markPeeking(a.id);
   const kind = a.k === 'l' ? 'Live Photo' : a.k === 'v' ? '동영상' : '사진';
   const chip = !a.done ? ['new', '새 항목 · 아직 맥에 없어요'] : a.onMac ? ['ok', '이미 옮김 · 맥에 있어요'] : ['gone', '맥에 없음'];
   const q = `id=${a.id}&t=${T}`;
@@ -593,9 +597,12 @@ function openPeek(id) {
     </div>
     <div class="pk-info">
       <div class="pk-name"><b>${esc(a.n)}</b><span>${fmtWhen(a.d)} · ${bytes(a.s)}${a.dur ? ' · ' + dur(a.dur) : ''} · ${kind}</span></div>
+      ${S.sel.has(a.id) ? `<span class="pk-chip pick">${I.check}골랐어요</span>` : ''}
       <span class="pk-chip ${chip[0]}"><i></i>${chip[1]}</span>
     </div>
-    <div class="pk-hint">손을 떼면 바로 닫혀요 · 마음에 들면 놓은 뒤 한 번 눌러서 고르세요</div>
+    <div class="pk-hint">${pinned
+      ? '<kbd>←</kbd><kbd>→</kbd> 이전 · 다음 (다른 날로 이어져요) · <kbd>↑</kbd><kbd>↓</kbd> 윗줄 · 아랫줄 · <kbd>Enter</kbd> 고르기 · <kbd>Esc</kbd> 나 아무 곳이나 누르면 닫혀요'
+      : '손을 떼면 바로 닫혀요 · 누른 채로 <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 를 누르면 계속 넘겨 볼 수 있어요'}</div>
   </div>`;
   el.classList.add('on');
   const full = el.querySelector('.pk-full');
@@ -636,14 +643,77 @@ async function watchMotion(a, video, el) {
   }
 }
 
+function stopPeekMedia() {
+  const el = $('#peek');
+  if (el) el.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
+}
+
 function closePeek() {
   if (!S.peek) return;
   S.peek = null;
+  markPeeking(null);
   const el = $('#peek');
   if (!el) return;
-  el.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
-  el.classList.remove('on');
+  stopPeekMedia();
+  el.classList.remove('on', 'pinned');
   el.innerHTML = '';
+}
+
+// 지금 보고 있는 사진을 목록에서 표시하고, 화면 밖이면 보이는 곳까지 스크롤해요
+function markPeeking(id) {
+  $$('#scroller .peeking').forEach(t => t.classList.remove('peeking'));
+  if (!id) return;
+  const t = $(`#scroller [data-id="${id}"].tile, #scroller .row[data-id="${id}"]`);
+  if (t) { t.classList.add('peeking'); t.scrollIntoView({ block: 'nearest' }); }
+}
+
+// 방향키로 넘겨 보기: ← → 는 목록 순서대로(날이 바뀌어도 이어서), ↑ ↓ 는 격자의 윗줄 · 아랫줄
+function peekStep(key) {
+  if (!S.peek) return;
+  const v = visible();
+  const i = v.findIndex(a => a.id === S.peek.id);
+  if (i < 0) return;
+  let next = null;
+  if (key === 'ArrowLeft') next = v[i - 1];
+  else if (key === 'ArrowRight') next = v[i + 1];
+  else next = peekRow(S.peek.id, key === 'ArrowDown' ? 1 : -1) || v[i + (key === 'ArrowDown' ? 1 : -1)];
+  if (!next) return;
+  openPeek(next.id, true);
+  preloadPhoto(v[v.indexOf(next) + (key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 1)]);
+}
+
+// 격자에서 바로 윗줄 · 아랫줄의 같은 자리(줄이 짧으면 가장 가까운 칸). 날이 바뀌면 다음 날의 첫 줄로 이어져요
+function peekRow(id, dir) {
+  const tiles = $$('#scroller .tile');
+  const k = tiles.findIndex(t => t.dataset.id === id);
+  if (k < 0) return null;
+  const r0 = tiles[k].getBoundingClientRect(), x0 = r0.left + r0.width / 2;
+  let rowTop = null, best = null, bestD = Infinity;
+  for (let j = k + dir; j >= 0 && j < tiles.length; j += dir) {
+    const r = tiles[j].getBoundingClientRect();
+    if (Math.abs(r.top - r0.top) < 2) continue;
+    if (rowTop === null) rowTop = r.top;
+    else if (Math.abs(r.top - rowTop) >= 2) break;
+    const d = Math.abs(r.left + r.width / 2 - x0);
+    if (d < bestD) { bestD = d; best = tiles[j]; }
+  }
+  return best ? S.items.find(a => a.id === best.dataset.id) : null;
+}
+
+// 다음에 볼 사진을 미리 받아 두어요 (넘길 때 바로 보이게)
+function preloadPhoto(a) {
+  if (!a || a.k === 'v') return;
+  const img = new Image();
+  img.src = `/api/view?id=${a.id}&t=${T}&p=photo`;
+}
+
+function peekToggleSel() {
+  if (!S.peek) return;
+  const id = S.peek.id;
+  S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id);
+  S.anchor = id;
+  syncSel();
+  openPeek(id, true);
 }
 
 // ------------------------------------------------------------------ 이미 옮긴 항목 다시 옮기기
@@ -1155,8 +1225,15 @@ window.addEventListener('error', e => { api('/api/clientlog', { items: [`${e.mes
 window.addEventListener('unhandledrejection', e => { api('/api/clientlog', { items: [`promise: ${e.reason && e.reason.message || e.reason}`] }).catch(() => {}); });
 
 document.addEventListener('keydown', e => {
+  if (S.peek && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    e.preventDefault();
+    peekStep(e.key);
+    return;
+  }
+  if (S.peek && S.peek.pinned && e.key === 'Enter') { e.preventDefault(); peekToggleSel(); return; }
   if ((e.key === ' ' || e.code === 'Space') && S.screen === 'main' && !S.settingsOpen && !e.target.closest('input, textarea') && !document.querySelector('.scrim')) {
     e.preventDefault();
+    if (!e.repeat && S.peek && S.peek.pinned) { closePeek(); return; }
     if (!e.repeat && S.hoverId && !S.peek) openPeek(S.hoverId);
     return;
   }

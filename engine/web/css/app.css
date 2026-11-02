@@ -317,3 +317,11 @@ button:disabled { cursor: default; opacity: .45; }
 .pk-chip.gone { background: rgba(255,138,85,.18); color: #FFAE85; }
 .pk-chip.gone i { background: var(--hot); }
 .pk-hint { padding: 0 18px 14px; font-size: 12px; color: #6F7B8B; }
+/* 방향키로 넘겨 보기 */
+.peek.pinned { pointer-events: auto; cursor: zoom-out; }
+.pk-hint kbd { display: inline-block; min-width: 18px; height: 18px; margin: 0 1px; padding: 0 4px; border-radius: 4px; border: 1px solid #3A4352;
+  background: #1E2530; color: #C9D2DE; font: 600 11px/16px var(--display); text-align: center; }
+.pk-chip.pick { background: rgba(79,111,255,.28); color: #C9D4FF; }
+.pk-chip.pick svg { width: 12px; height: 12px; }
+.tile.peeking { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px var(--accent); z-index: 1; }
+.row.peeking { background: var(--chip); }

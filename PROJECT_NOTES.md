@@ -30,6 +30,13 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 - [ ] 문제가 나면 사용자에게 '진단 정보 보기'(device.log 포함) 내용을 받아서 고치기
 
 ### 작업 기록
+- 2026-11-02 v1.1.3 — 사용자 요청: 미리보기 중 방향키로 계속 넘겨 보기, ← → 는 다음 날로 이어지게.
+  app.js: 미리보기가 열린 상태(길게 누르기 · Space)에서 ← → = 목록 순서대로 이전 · 다음(visible() 순서라 날 · 달 · 연이 바뀌어도 이어짐),
+  ↑ ↓ = 격자 윗줄 · 아랫줄 같은 칸(peekRow: 화면 위치로 찾음, 줄이 짧으면 가장 가까운 칸, 날 경계 넘어감, 목록 보기면 이전 · 다음).
+  방향키를 한 번이라도 누르면 '넘겨 보기'(S.peek.pinned): 손 · Space 를 떼도 닫히지 않고 Esc · Space · 아무 곳이나 누르면 닫힘
+  (#peek.pinned 가 클릭을 받아서 아래 사진이 눌리지 않음). Enter = 지금 사진 고르기/풀기('골랐어요' 표시). 보고 있는 사진은 목록에서 테두리(.peeking)
+  + 화면 밖이면 스크롤, 다음 사진 원본을 미리 받음(preloadPhoto). 넘길 때는 창을 닫지 않고 내용만 바꿔서 깜빡이지 않음(stopPeekMedia).
+  사용 가이드 '크게 보기'에 방향키 한 줄. ui-test.py 에 넘겨 보기 시험 14개 추가(모두 통과).
 - 2026-11-02 v1.1.2 — 사용자 제보(CUTROAD 에서): Spotlight 에 같은 앱이 두 개(응용 프로그램 + 백업 폴더) 보임. 업데이트 때 이전 버전을 보관하는
   폴더를 `Support/backup.noindex/MyPhotoBook_ROAD.app`(.noindex = Spotlight 가 안 찾음)로 바꾸고, 바꾸기 · 되돌리기 뒤 `lsregister -u` 로 보관본을 macOS 목록에서 지움.
   엔진이 켜질 때 예전 `Support/backup/MyPhotoBook_ROAD.app` 이 있으면 새 폴더로 옮김(migrateBackup). 맥 시험 A1b 추가. Windows 경로는 그대로.
