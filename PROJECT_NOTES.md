@@ -30,6 +30,9 @@ iPhone 사진 · 동영상을 케이블로 맥(Apple Silicon)에 옮기는 앱. 
 - [ ] 문제가 나면 사용자에게 '진단 정보 보기'(device.log 포함) 내용을 받아서 고치기
 
 ### 작업 기록
+- 2026-11-02 v1.1.2 — 사용자 제보(CUTROAD 에서): Spotlight 에 같은 앱이 두 개(응용 프로그램 + 백업 폴더) 보임. 업데이트 때 이전 버전을 보관하는
+  폴더를 `Support/backup.noindex/MyPhotoBook_ROAD.app`(.noindex = Spotlight 가 안 찾음)로 바꾸고, 바꾸기 · 되돌리기 뒤 `lsregister -u` 로 보관본을 macOS 목록에서 지움.
+  엔진이 켜질 때 예전 `Support/backup/MyPhotoBook_ROAD.app` 이 있으면 새 폴더로 옮김(migrateBackup). 맥 시험 A1b 추가. Windows 경로는 그대로.
 - 2026-11-02 v1.1.1 — 사용자 요청: 전체적으로 속도. 측정(scratchpad bench.py, 가짜 iPhone · 작은 사진):
   3,000장 가져오기 오버헤드 70.8초 → 2.7초(장당 23.6ms → 0.9ms), 8,000장 9분 넘음 → 7초, 8,000장 첫 화면 472ms → 62ms.
   원인 · 고친 것: ① 사진 한 장이 끝날 때마다 Library 가 묶음 구조 + 모든 파일 stat 을 처음부터 다시 만듦(O(N²))
